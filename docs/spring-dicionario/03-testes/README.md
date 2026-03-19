@@ -1,11 +1,13 @@
 # 03 - Testes (da teoria à prática)
 
+> Navegação: [⬅ Anterior: 02.6 - OpenAPI/Swagger + Actuator](../02-aplicacao-pratica/02.6-openapi-actuator.md) | [📚 Índice geral](../README.md) | [➡ Próximo: 03.0 - Testes Spring (conceito)](03.0-testes-spring.md)
+
 Esta pasta transforma conhecimento em confiança.
 
 ## Ordem recomendada
 
-1. [10 - Testes Spring (conceito)](10-testes-spring.md)
-2. [11 - Testes na prática (0 ao 100%)](11-testes-na-pratica-0-100.md)
+1. [03.0 - Testes Spring (conceito)](03.0-testes-spring.md)
+2. [03.1 - Testes na prática (0 ao 100%)](03.1-testes-na-pratica-0-100.md)
 
 ## Objetivo
 

@@ -10,29 +10,29 @@ Este projeto é uma API RESTful de um Diário de Trabalho que utiliza Inteligên
 
 Para aprender de forma organizada (sem confusão e sem mexer no runtime da API), usa este guia por tópicos:
 
-- **Índice principal**: `docs/spring-dicionario/README.md`
+- **Índice principal**: [docs/spring-dicionario/README.md](docs/spring-dicionario/README.md)
 
 Capítulos:
 
 Fundamentos:
 
-- `docs/spring-dicionario/01-fundamentos/README.md`
+- [docs/spring-dicionario/01-fundamentos/README.md](docs/spring-dicionario/01-fundamentos/README.md)
 
 Aplicação prática:
 
-- `docs/spring-dicionario/02-aplicacao-pratica/README.md`
+- [docs/spring-dicionario/02-aplicacao-pratica/README.md](docs/spring-dicionario/02-aplicacao-pratica/README.md)
 
 Testes:
 
-- `docs/spring-dicionario/03-testes/README.md`
+- [docs/spring-dicionario/03-testes/README.md](docs/spring-dicionario/03-testes/README.md)
 
 Referência rápida:
 
-- `docs/spring-dicionario/04-referencia-rapida/README.md`
+- [docs/spring-dicionario/04-referencia-rapida/README.md](docs/spring-dicionario/04-referencia-rapida/README.md)
 
 Enciclopédia Spring (base oficial, para estudo profundo):
 
-- `docs/spring-dicionario/05-enciclopedia-oficial/README.md`
+- [docs/spring-dicionario/05-enciclopedia-oficial/README.md](docs/spring-dicionario/05-enciclopedia-oficial/README.md)
 
 ---
 

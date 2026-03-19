@@ -1,16 +1,18 @@
 # 02 - Aplicação prática (núcleo da API)
 
+> Navegação: [⬅ Anterior: 01.2 - REST Controllers + DTOs + Validação](../01-fundamentos/01.2-rest-dto-validacao.md) | [📚 Índice geral](../README.md) | [➡ Próximo: 02.0 - Service + Transações](02.0-service-transacoes.md)
+
 Esta pasta aprofunda a implementação da API real.
 
 ## Ordem recomendada
 
-1. [03 - Service + Transações](03-service-transacoes.md)
-2. [04 - JPA Entidades e Relacionamentos](04-jpa-entidades-relacionamentos.md)
-3. [05 - Repositories e Queries](05-repositories-queries.md)
-4. [06 - Segurança JWT com Spring Security](06-seguranca-jwt.md)
-5. [07 - Tratamento global de exceções](07-exception-handler.md)
-6. [08 - Configuração e Profiles](08-configuracao-profiles.md)
-7. [09 - OpenAPI/Swagger + Actuator](09-openapi-actuator.md)
+1. [02.0 - Service + Transações](02.0-service-transacoes.md)
+2. [02.1 - JPA Entidades e Relacionamentos](02.1-jpa-entidades-relacionamentos.md)
+3. [02.2 - Repositories e Queries](02.2-repositories-queries.md)
+4. [02.3 - Segurança JWT com Spring Security](02.3-seguranca-jwt.md)
+5. [02.4 - Tratamento global de exceções](02.4-exception-handler.md)
+6. [02.5 - Configuração e Profiles](02.5-configuracao-profiles.md)
+7. [02.6 - OpenAPI/Swagger + Actuator](02.6-openapi-actuator.md)
 
 ## Objetivo
 
