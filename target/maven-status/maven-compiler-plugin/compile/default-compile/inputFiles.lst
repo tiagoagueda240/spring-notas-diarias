@@ -1,0 +1,8 @@
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/Application.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/controller/DailyEntryController.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/dto/AiExtractedDailyLog.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/dto/AiTask.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/dto/DailyEntryRequest.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/entity/DailyEntry.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/repository/DailyEntryRepository.java
+/Users/agueda/Documents/freelance/spring_aprender/api/src/main/java/com/tiagoagueda/api/service/DailyEntryService.java

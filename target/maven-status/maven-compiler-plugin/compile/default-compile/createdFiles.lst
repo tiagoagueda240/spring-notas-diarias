@@ -1,0 +1,8 @@
+com/tiagoagueda/api/dto/DailyEntryRequest.class
+com/tiagoagueda/api/entity/DailyEntry.class
+com/tiagoagueda/api/controller/DailyEntryController.class
+com/tiagoagueda/api/Application.class
+com/tiagoagueda/api/dto/AiExtractedDailyLog.class
+com/tiagoagueda/api/repository/DailyEntryRepository.class
+com/tiagoagueda/api/service/DailyEntryService.class
+com/tiagoagueda/api/dto/AiTask.class

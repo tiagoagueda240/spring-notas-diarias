@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:15-alphine
+    container_name: bragdoc-db
+    environment:
+      POSTGRES_DB: bragdoc_db
+      POSTGRES_USER: agueda
+      POSTGRES_PASSWORD: password_segura
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    container_name: bragdoc-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bragdoc_db
+      SPRING_DATASOURCE_USERNAME: agueda
+      SPRING_DATASOURCE_PASSWORD: password_segura
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    depends_on:
+      - db
