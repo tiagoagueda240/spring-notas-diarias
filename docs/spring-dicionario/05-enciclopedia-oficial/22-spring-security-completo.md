@@ -1,0 +1,54 @@
+# 22 - Spring Security completo
+
+## O que o Spring Security resolve
+
+- Autenticação (quem és)
+- Autorização (o que podes fazer)
+- Proteção contra ataques comuns
+
+## Conceitos principais
+
+### Authentication
+Identidade do utilizador validada.
+
+### Authorization
+Permissões para aceder recursos.
+
+### Security Filter Chain
+Pipeline de filtros que processa cada request HTTP.
+
+### SecurityContext
+Contexto da segurança com utilizador autenticado.
+
+## Fluxo JWT típico
+
+1. Login recebe credenciais
+2. Gera token JWT
+3. Cliente envia token em `Authorization: Bearer ...`
+4. Filtro valida token
+5. Utilizador autenticado entra no `SecurityContext`
+
+## Configurações importantes
+
+- `SessionCreationPolicy.STATELESS`
+- Endpoints públicos vs privados
+- Password hashing com BCrypt
+- Tratamento de 401/403
+
+## Ataques e proteção
+
+Spring Security ajuda com:
+- CSRF
+- clickjacking
+- session fixation
+- headers de segurança
+
+## Erros comuns
+
+- Guardar password sem hash.
+- Expor endpoints sensíveis como públicos.
+- Não definir regras claras por rota.
+
+## Resumo de 30 segundos
+
+Spring Security é obrigatório em APIs reais. JWT + filtros + regras de autorização dão base sólida.

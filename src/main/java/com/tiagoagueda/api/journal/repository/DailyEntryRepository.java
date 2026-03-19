@@ -12,6 +12,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+/**
+ * Repositório de acesso a dados para DailyEntry.
+ *
+ * Centraliza queries específicas do diário, com foco em segurança por utilizador
+ * e otimização de leitura via EntityGraph.
+ */
 public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
     // Só por fazeres "extends JpaRepository", já ganhaste métodos grátis como:
     // save(), findAll(), findById(), deleteById()
@@ -27,6 +33,9 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Page<DailyEntry> findByAppUserOrderByEntryDateDesc(AppUser appUser, Pageable pageable);
 
+    /**
+     * Procura diário por id validando também o dono (AppUser).
+     */
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Optional<DailyEntry> findByIdAndAppUser(UUID id, AppUser appUser);
 }

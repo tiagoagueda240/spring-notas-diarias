@@ -1,6 +1,11 @@
 package com.tiagoagueda.api.user;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
@@ -9,6 +14,14 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "app_users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+/**
+ * Entidade de utilizador da aplicação compatível com Spring Security (UserDetails).
+ */
 public class AppUser implements UserDetails { // <-- IMPORTANTE
 
     @Id
@@ -22,35 +35,6 @@ public class AppUser implements UserDetails { // <-- IMPORTANTE
     private String password;
 
     private String name;
-
-    // --- CONSTRUTORES, GETTERS e SETTERS NORMAIS ---
-    public AppUser() {}
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
 
     // --- MÉTODOS OBRIGATÓRIOS DA INTERFACE USERDETAILS ---
 

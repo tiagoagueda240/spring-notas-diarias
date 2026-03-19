@@ -2,7 +2,9 @@ package com.tiagoagueda.api.journal.dto;
 
 import java.util.List;
 
-// Isto representa uma única tarefa que a IA encontrou no teu texto
+/**
+ * Representa uma tarefa extraída pela IA a partir do texto do diário.
+ */
 public record AiTask(
         String title,
         String description,

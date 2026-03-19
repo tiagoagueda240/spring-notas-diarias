@@ -1,0 +1,52 @@
+# 24 - Spring em produção: Actuator, métricas, logs e observabilidade
+
+## Objetivo
+
+Depois de funcionar localmente, tens de observar a app em produção.
+
+## Spring Boot Actuator
+
+Fornece endpoints de gestão e monitorização:
+- health
+- info
+- metrics
+- prometheus
+- env, beans (com cuidado)
+
+## Health checks
+
+- Liveness: aplicação está viva?
+- Readiness: aplicação está pronta para receber tráfego?
+
+## Métricas
+
+Com Micrometer podes enviar métricas para:
+- Prometheus
+- Grafana (visualização)
+- outros backends suportados
+
+## Logs
+
+Boas práticas:
+- logs estruturados
+- níveis corretos (`INFO`, `WARN`, `ERROR`)
+- nunca logar segredos
+
+## Alertas
+
+Define alertas para:
+- erro alto (5xx)
+- latência elevada
+- uso de memória/CPU
+- indisponibilidade do health
+
+## Segurança em produção
+
+- restringir endpoints sensíveis do actuator
+- proteger credenciais
+- usar TLS
+- atualizar dependências
+
+## Resumo de 30 segundos
+
+Produção não é só “rodar aplicação”. É monitorizar, medir e reagir rápido a problemas.

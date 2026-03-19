@@ -1,0 +1,58 @@
+# 20 - Spring Data JPA completo
+
+## O que é Spring Data JPA
+
+É uma abstração que simplifica acesso a dados com JPA/Hibernate.
+
+## Repositories
+
+Ao estender `JpaRepository`, ganhas:
+- `save`
+- `findById`
+- `findAll`
+- `delete`
+- paginação e sorting
+
+## Query methods por nome
+
+Exemplos:
+- `findByEmail`
+- `findByNameIgnoreCase`
+- `findByStatusOrderByCreatedAtDesc`
+
+## Relacionamentos JPA
+
+- `@OneToOne`
+- `@OneToMany`
+- `@ManyToOne`
+- `@ManyToMany`
+
+## Fetch
+
+- `LAZY` (recomendado como default)
+- `EAGER` (usar com cuidado)
+
+## Evitar N+1
+
+Técnicas:
+- `@EntityGraph`
+- `join fetch` em queries
+- desenho de DTO para leitura
+
+## Paginação
+
+Usa `Pageable` e retorna `Page<T>`.
+
+## Migrações de schema
+
+Para produção, prefere Flyway ou Liquibase.
+
+## Erros comuns
+
+- Usar entidade diretamente como DTO externo.
+- Cascatas perigosas sem analisar impacto.
+- Ignorar transações e consistência.
+
+## Resumo de 30 segundos
+
+Spring Data JPA acelera CRUD e queries, mas exige atenção em modelagem, fetch e performance.

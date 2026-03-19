@@ -1,10 +1,24 @@
 package com.tiagoagueda.api.journal.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "tags")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+/**
+ * Entidade de tag usada para categorizar tarefas extraídas.
+ */
 public class Tag {
 
     @Id
@@ -14,14 +28,4 @@ public class Tag {
     // A tag tem de ser única na base de dados
     @Column(nullable = false, unique = true)
     private String name;
-
-    public Tag() {}
-
-    public Tag(String name) {
-        this.name = name;
-    }
-
-    public UUID getId() { return id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
 }

@@ -1,0 +1,45 @@
+# 15 - Spring Framework: visão geral completa
+
+Este capítulo resume o ecossistema Spring baseado na documentação oficial.
+
+## O que é o Spring Framework
+
+Spring Framework é uma plataforma para construir aplicações Java com:
+- Injeção de dependências (IoC/DI)
+- Programação orientada a aspetos (AOP)
+- Web MVC e WebFlux
+- Acesso a dados e transações
+- Testes integrados
+
+## Módulos principais (mapa mental)
+
+1. Core Technologies
+2. Data Access
+3. Web on Servlet Stack (Spring MVC)
+4. Web on Reactive Stack (WebFlux)
+5. Testing
+6. Integration (scheduling, caching, observability, messaging)
+
+## Spring Framework vs Spring Boot
+
+- Spring Framework: base técnica e APIs centrais.
+- Spring Boot: experiência rápida para arrancar projeto com auto-configuração, starters e convenções.
+
+## O que estudar primeiro
+
+1. IoC e Beans
+2. Controllers e validação
+3. JPA e transações
+4. Segurança
+5. Testes
+6. Observabilidade em produção
+
+## Erros comuns de júnior
+
+- Tentar aprender tudo ao mesmo tempo.
+- Ignorar fundamentos de IoC/DI.
+- Focar em framework antes de entender HTTP e SQL.
+
+## Resumo de 30 segundos
+
+Spring é um conjunto de blocos. Primeiro aprendes os blocos (Core, Web, Data, Security), depois Spring Boot liga tudo para acelerar desenvolvimento.

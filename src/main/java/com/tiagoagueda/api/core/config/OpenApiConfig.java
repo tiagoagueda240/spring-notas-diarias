@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
                 title = "API Diário Inteligente",
                 version = "1.0",
                 description = "API para gestão de diários com extração de tarefas via IA (Gemini).",
-                contact = @Contact(name = "Tiago Agueda")
+                contact = @Contact(name = "Nome")
         ),
         security = {
                 @SecurityRequirement(name = "bearerAuth") // Diz que todos os endpoints precisam disto por defeito
@@ -29,5 +29,11 @@ import org.springframework.context.annotation.Configuration;
         bearerFormat = "JWT",
         in = SecuritySchemeIn.HEADER
 )
+/**
+ * Configuração central do OpenAPI/Swagger.
+ *
+ * Define metadados da API (nome, versão, descrição) e o esquema de segurança JWT
+ * para que os endpoints protegidos possam ser testados no Swagger UI.
+ */
 public class OpenApiConfig {
 }

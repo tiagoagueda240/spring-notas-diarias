@@ -7,6 +7,7 @@ import com.tiagoagueda.api.core.exception.UserAlreadyExistsException;
 import com.tiagoagueda.api.user.AppUser;
 import com.tiagoagueda.api.user.AppUserRepository;
 import com.tiagoagueda.api.security.JwtService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +16,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
+/**
+ * Serviço com a lógica de registo e login.
+ *
+ * Responsabilidades principais:
+ * - validar regras de negócio (ex: email já existe),
+ * - criar utilizador com password encriptada,
+ * - pedir autenticação ao Spring Security,
+ * - gerar e devolver JWT.
+ */
 public class AuthenticationService {
 
     private final AppUserRepository repository;
@@ -24,13 +35,15 @@ public class AuthenticationService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
 
-    public AuthenticationService(AppUserRepository repository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
-        this.repository = repository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
-    }
-
+    /**
+     * Regista um novo utilizador.
+     *
+     * Fluxo:
+     * 1) valida unicidade do email;
+     * 2) encripta password;
+     * 3) grava utilizador na BD;
+     * 4) devolve token JWT.
+     */
     public AuthenticationResponse register(RegisterRequest request) {
         log.info("A iniciar processo de registo para o email: {}", request.email());
 
@@ -39,10 +52,11 @@ public class AuthenticationService {
             throw new UserAlreadyExistsException("Este email já se encontra registado no nosso sistema.");
         }
         // Cria o utilizador
-        AppUser user = new AppUser();
-        user.setName(request.name());
-        user.setEmail(request.email());
-        user.setPassword(passwordEncoder.encode(request.password())); // NUNCA guardar em plain text!
+        AppUser user = AppUser.builder()
+            .name(request.name())
+            .email(request.email())
+            .password(passwordEncoder.encode(request.password()))
+            .build(); // NUNCA guardar em plain text!
 
         // Guarda na BD
         repository.save(user);
@@ -54,6 +68,12 @@ public class AuthenticationService {
         return new AuthenticationResponse(jwtToken);
     }
 
+    /**
+     * Autentica utilizador existente com AuthenticationManager do Spring.
+     *
+     * Se as credenciais estiverem corretas, devolve JWT.
+     * Se estiverem erradas, o Spring lança exceção (tratada globalmente).
+     */
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         log.info("A tentar autenticar utilizador: {}", request.email());
 

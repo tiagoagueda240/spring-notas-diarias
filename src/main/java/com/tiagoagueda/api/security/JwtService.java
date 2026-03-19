@@ -19,31 +19,45 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
+/**
+ * Serviço responsável por gerar, validar e extrair dados de tokens JWT.
+ */
 public class JwtService {
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${application.security.jwt.secret-key}")
     private String secretKey;
 
+    /**
+     * Extrai o username (subject) de um token.
+     */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
+    /**
+     * Gera token sem claims adicionais.
+     */
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    /**
+     * Gera token com claims adicionais e subject igual ao username do utilizador.
+     */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        // NOVA SINTAXE JJWT 0.12.x
         return Jwts.builder()
-                .claims(extraClaims) // Antes era setClaims
-                .subject(userDetails.getUsername()) // Antes era setSubject
-                .issuedAt(new Date(System.currentTimeMillis())) // Antes era setIssuedAt
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // Antes era setExpiration
-                .signWith(getSignInKey()) // O algoritmo (HS256) agora é inferido automaticamente da chave!
+                .claims(extraClaims)
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .signWith(getSignInKey())
                 .compact();
     }
 
+    /**
+     * Valida se o token pertence ao utilizador e se ainda não expirou.
+     */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
@@ -57,21 +71,28 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    /**
+     * Extrai uma claim específica de forma genérica.
+     */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
     private Claims extractAllClaims(String token) {
-        // NOVA SINTAXE JJWT 0.12.x
         return Jwts.parser()
-                .verifyWith(getSignInKey()) // Antes era setSigningKey
+                .verifyWith(getSignInKey())
                 .build()
-                .parseSignedClaims(token) // Antes era parseClaimsJws
-                .getPayload(); // Antes era getBody
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
-    private SecretKey getSignInKey() { // O retorno mudou de Key para SecretKey
+    /**
+     * Obtém a chave de assinatura HMAC a partir da configuração.
+     *
+     * Tenta decodificar Base64 e, se falhar, usa plain-text UTF-8.
+     */
+    private SecretKey getSignInKey() {
         byte[] keyBytes;
         try {
             keyBytes = Decoders.BASE64.decode(secretKey);

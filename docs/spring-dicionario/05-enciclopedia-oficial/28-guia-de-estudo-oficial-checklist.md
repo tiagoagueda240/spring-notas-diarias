@@ -1,0 +1,52 @@
+# 28 - Guia de estudo oficial (checklist final)
+
+Este checklist garante cobertura ampla da documentação oficial sem te perderes.
+
+## Checklist Spring Framework
+
+- [ ] Core (IoC/DI/Beans)
+- [ ] AOP
+- [ ] Data Access (JPA/JDBC/Transações)
+- [ ] Web MVC
+- [ ] WebFlux
+- [ ] Testing
+- [ ] Integration (cache, scheduling, messaging)
+- [ ] Observabilidade
+- [ ] AOT
+
+## Checklist Spring Boot
+
+- [ ] Starters e auto-configuração
+- [ ] Externalized configuration
+- [ ] Perfis
+- [ ] Logging
+- [ ] Actuator
+- [ ] Build e deploy
+
+## Checklist Spring Security
+
+- [ ] Autenticação
+- [ ] Autorização
+- [ ] Filter chain
+- [ ] JWT
+- [ ] Hardening básico
+
+## Checklist de maturidade
+
+### Nível júnior
+
+- Consegue criar CRUD com validação e erro global.
+
+### Nível intermédio
+
+- Consegue proteger API com JWT e testar camadas.
+
+### Nível avançado
+
+- Consegue otimizar performance, observabilidade e arquitetura de produção.
+
+## Como usar este checklist
+
+1. Marca os pontos dominados.
+2. Volta ao capítulo correspondente.
+3. Cria mini projeto para cada bloco em falta.

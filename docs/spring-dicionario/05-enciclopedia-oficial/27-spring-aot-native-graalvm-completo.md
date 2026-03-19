@@ -1,0 +1,40 @@
+# 27 - Spring AOT e Native (GraalVM) completo
+
+Este capítulo cobre AOT, muito citado na documentação oficial moderna do Spring.
+
+## 1) O que é AOT
+
+AOT (Ahead-Of-Time) prepara metadados e otimizações antes do runtime.
+
+## 2) O que é Native Image
+
+Compilar aplicação Java para binário nativo com GraalVM.
+
+### Benefícios
+
+- Startup muito rápido.
+- Menor consumo inicial de memória.
+
+### Custos
+
+- Build mais complexo/lento.
+- Compatibilidade pode exigir ajustes.
+
+## 3) Quando usar
+
+- Serverless.
+- Microserviços com arranque rápido.
+- Ambientes com recursos limitados.
+
+## 4) Cuidados técnicos
+
+- Reflection dinâmica pode precisar de configuração adicional.
+- Bibliotecas devem ser compatíveis com native.
+
+## 5) No ecossistema Spring
+
+Spring Boot e Spring Framework têm suporte crescente a AOT/native em versões recentes.
+
+## Resumo de 30 segundos
+
+AOT/native acelera arranque e pode reduzir footprint, mas aumenta complexidade de build e compatibilidade.

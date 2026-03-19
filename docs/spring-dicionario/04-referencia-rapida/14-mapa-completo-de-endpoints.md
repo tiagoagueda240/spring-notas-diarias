@@ -1,0 +1,106 @@
+# 14 - Mapa completo de endpoints
+
+Este é o mapa rápido de rotas da API para consulta diária.
+
+## Auth (`/api/v1/auth`)
+
+### `POST /api/v1/auth/register`
+
+- Público: sim
+- Body: `RegisterRequest`
+  - `name` (obrigatório)
+  - `email` (obrigatório, formato email)
+  - `password` (obrigatório, mínimo 6)
+- Resposta sucesso: `200 OK`
+- Resposta erro comum:
+  - `400` validação
+  - `409` email já existe
+
+### `POST /api/v1/auth/authenticate`
+
+- Público: sim
+- Body: `AuthenticationRequest`
+- Resposta sucesso: `200 OK` + token JWT
+- Resposta erro comum:
+  - `401` credenciais inválidas
+
+## Diário (`/api/v1/daily-entries`)
+
+### `POST /api/v1/daily-entries`
+
+- Público: não (exige `Authorization: Bearer <token>`)
+- Body: `DailyEntryRequest`
+  - `text` obrigatório (`@NotBlank`)
+- Resposta sucesso: `201 Created`
+- Resposta erro comum:
+  - `400` body inválido
+  - `401` sem token/token inválido
+
+### `GET /api/v1/daily-entries?page=0&size=10`
+
+- Público: não
+- Query params:
+  - `page` default `0`
+  - `size` default `10`
+- Resposta sucesso: `200 OK` com paginação
+- Resposta erro comum:
+  - `401` sem token/token inválido
+
+### `GET /api/v1/daily-entries/{id}`
+
+- Público: não
+- Resposta sucesso: `200 OK`
+- Resposta possível:
+  - `404` não encontrado
+  - `401` sem token/token inválido
+
+### `DELETE /api/v1/daily-entries/{id}`
+
+- Público: não
+- Resposta sucesso: `204 No Content`
+- Resposta possível:
+  - `404` não encontrado/não pertence ao utilizador
+  - `401` sem token/token inválido
+
+## Docs e monitorização
+
+### `GET /swagger-ui/index.html`
+
+- Público: sim
+- Função: interface visual da documentação OpenAPI.
+
+### `GET /v3/api-docs`
+
+- Público: sim
+- Função: JSON OpenAPI.
+
+### `GET /actuator/health`
+
+- Público: sim
+- Função: estado da aplicação.
+
+### `GET /actuator/prometheus`
+
+- Público: sim
+- Função: métricas para Prometheus.
+
+## Cabeçalhos importantes
+
+### `Authorization`
+
+- Usado em endpoints protegidos.
+- Formato: `Bearer <token>`.
+
+### `Content-Type`
+
+- Para envio de JSON: `application/json`.
+
+## Dica prática
+
+Se uma rota não funcionar, valida sempre nesta ordem:
+
+1. URL
+2. método HTTP
+3. body JSON
+4. token JWT
+5. código HTTP devolvido

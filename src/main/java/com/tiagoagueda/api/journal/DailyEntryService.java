@@ -26,6 +26,9 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Service // Diz ao Spring que esta classe contém a lógica de negócio
+/**
+ * Serviço de negócio responsável por guardar entradas diárias e processá-las com IA.
+ */
 public class DailyEntryService {
 
     private final DailyEntryRepository dailyEntryRepository;
@@ -58,7 +61,10 @@ public class DailyEntryService {
     public DailyEntryDTO saveEntry(String rawText, AppUser currentUser) {
         log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
 
-        DailyEntry newEntry = new DailyEntry(LocalDate.now(), rawText);
+        DailyEntry newEntry = DailyEntry.builder()
+            .entryDate(LocalDate.now())
+            .rawText(rawText)
+            .build();
         newEntry.setAppUser(currentUser);
 
         // 1. Guardamos o diário. O repository.save() abre a sua própria mini-transação rápida.
@@ -198,7 +204,7 @@ public class DailyEntryService {
 
         // 2. Se não encontrou, tenta criar e gravar
         try {
-            Tag newTag = new Tag(cleanTagName);
+            Tag newTag = Tag.builder().name(cleanTagName).build();
             // Temos de usar saveAndFlush para forçar a query SQL a ir à BD imediatamente
             // e disparar a exceção de integridade caso haja conflito.
             return tagRepository.saveAndFlush(newTag);

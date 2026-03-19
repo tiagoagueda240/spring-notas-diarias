@@ -1,0 +1,57 @@
+# 26 - Spring Data Access: JDBC e R2DBC completo
+
+Este capítulo complementa a parte de dados além de JPA.
+
+## 1) JDBC (bloqueante)
+
+### O que é
+
+Acesso direto a base de dados relacional com SQL e APIs JDBC.
+
+### Ferramenta Spring
+
+- `JdbcTemplate`
+
+### Quando usar
+
+- Queries SQL muito específicas.
+- Performance fina com controlo total.
+- Evitar complexidade de ORM em casos simples.
+
+### Vantagens
+
+- Simples e direto.
+- Menos abstração.
+
+### Desvantagens
+
+- Mais código manual de mapeamento.
+
+## 2) R2DBC (reativo)
+
+### O que é
+
+Acesso reativo a base de dados (não bloqueante).
+
+### Quando usar
+
+- Arquitetura reativa ponta a ponta (WebFlux + driver reativo).
+
+### Cuidado
+
+- Não misturar reativo e bloqueante sem estratégia.
+
+## 3) JPA vs JDBC vs R2DBC
+
+- JPA: produtividade alta para domínio rico.
+- JDBC: controlo máximo em SQL.
+- R2DBC: cenários reativos e alta concorrência I/O.
+
+## 4) Transações nesses cenários
+
+- JDBC/JPA: transações tradicionais Spring (`@Transactional`).
+- Reativo: transações reativas (contexto reativo específico).
+
+## Resumo de 30 segundos
+
+JPA não é a única opção no Spring. JDBC e R2DBC existem para casos onde ORM não é a melhor escolha.
