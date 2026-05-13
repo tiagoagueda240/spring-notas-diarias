@@ -28,6 +28,9 @@ public class JwtService {
     @Value("${application.security.jwt.secret-key}")
     private String secretKey;
 
+    @Value("${application.security.jwt.access-token-expiration:900000}")
+    private long accessTokenExpiration;
+
     /**
      * Extrai o username (subject) de um token.
      */
@@ -44,13 +47,14 @@ public class JwtService {
 
     /**
      * Gera token com claims adicionais e subject igual ao username do utilizador.
+     * Expiração configurável via application.security.jwt.access-token-expiration.
      */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(getSignInKey())
                 .compact();
     }

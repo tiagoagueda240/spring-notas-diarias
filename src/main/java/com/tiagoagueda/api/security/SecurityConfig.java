@@ -22,41 +22,30 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final AuthenticationProvider authenticationProvider;
 
-    /**
-     * O SecurityFilterChain é a cadeia de filtros pela qual todos os pedidos HTTP passam.
-     * É aqui que definimos o que é público e o que é privado.
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desativamos o CSRF porque vamos usar JWT (Tokens), logo não usamos cookies de sessão.
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // STATELESS significa que o servidor não vai guardar o estado do utilizador (sessão).
-                // Cada pedido HTTP tem de ser independente e trazer o seu próprio Token JWT.
                 .cors(Customizer.withDefaults())
-
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // Regras de autorização de URLs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll() // Login/Registo: Acesso Livre
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
-                        ).permitAll() // <-- LIBERTAR O SWAGGER
-                        .requestMatchers("/actuator/**").permitAll()    // Monitorização: Acesso Livre
-                        .anyRequest().authenticated()                   // Resto: Exige Token Válido
+                        ).permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated()
                 )
-
-                // Configura quem verifica o utilizador na BD (authenticationProvider)
                 .authenticationProvider(authenticationProvider)
-
-                // Adiciona o nosso filtro JWT ANTES do filtro padrão de Username/Password do Spring
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // JWT filter valida o token e popula o SecurityContext
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Rate limiting corre DEPOIS do JWT filter para ter o utilizador disponível
+                .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

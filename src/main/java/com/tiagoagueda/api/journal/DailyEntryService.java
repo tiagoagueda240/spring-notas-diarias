@@ -1,4 +1,4 @@
-package com.tiagoagueda.api.journal;
+﻿package com.tiagoagueda.api.journal;
 
 import com.tiagoagueda.api.journal.dto.*;
 import com.tiagoagueda.api.user.AppUser;
@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DailyEntryService {
@@ -45,8 +46,12 @@ public class DailyEntryService {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+    // -------------------------------------------------------------------------
+    // CRUD de entradas
+    // -------------------------------------------------------------------------
+
     public DailyEntryDTO saveEntry(String rawText, AppUser currentUser) {
-        log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
+        log.info("A criar nova entrada de diÃ¡rio para o utilizador: {}", currentUser.getEmail());
 
         DailyEntry newEntry = DailyEntry.builder()
                 .entryDate(LocalDate.now())
@@ -55,38 +60,7 @@ public class DailyEntryService {
         newEntry.setAppUser(currentUser);
 
         DailyEntry savedEntry = dailyEntryRepository.save(newEntry);
-
-        try {
-            log.info("A contactar o Gemini (Spring AI) para extrair tarefas...");
-            AiExtractedDailyLog extractedData = extractTasksWithAI(rawText);
-
-            if (extractedData != null && extractedData.tasks() != null) {
-                transactionTemplate.executeWithoutResult(status -> {
-                    for (AiTask aiTask : extractedData.tasks()) {
-                        TaskLog taskLog = new TaskLog();
-                        taskLog.setTitle(aiTask.title());
-                        taskLog.setDescription(aiTask.description());
-                        taskLog.setImpactScore(aiTask.impactScore());
-                        taskLog.setImpactJustification(aiTask.impactJustification());
-
-                        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
-                        if (aiTask.tags() != null) {
-                            for (String tagName : aiTask.tags()) {
-                                taskTags.add(getOrCreateTag(tagName));
-                            }
-                        }
-                        taskLog.setTags(taskTags);
-                        savedEntry.addTask(taskLog);
-                        taskLogRepository.save(taskLog);
-                    }
-                    savedEntry.setAiProcessed(true);
-                    dailyEntryRepository.save(savedEntry);
-                });
-            }
-        } catch (Exception e) {
-            log.error("Falha ao processar texto com a IA (Gemini). Erro: {}", e.getMessage(), e);
-        }
-
+        populateEntryWithAiTasks(savedEntry, rawText);
         return convertToDTO(savedEntry);
     }
 
@@ -94,210 +68,35 @@ public class DailyEntryService {
         log.info("A atualizar entrada {} do utilizador {}", id, currentUser.getEmail());
 
         DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
-                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou sem permissão."));
+                .orElseThrow(() -> new NoSuchElementException("DiÃ¡rio nÃ£o encontrado ou sem permissÃ£o."));
 
         entry.setRawText(newText);
         entry.setAiProcessed(false);
-
         taskLogRepository.deleteAll(entry.getTasks());
         entry.getTasks().clear();
 
-        DailyEntry updatedEntry = dailyEntryRepository.save(entry);
-
-        try {
-            AiExtractedDailyLog extractedData = extractTasksWithAI(newText);
-            if (extractedData != null && extractedData.tasks() != null) {
-                transactionTemplate.executeWithoutResult(status -> {
-                    for (AiTask aiTask : extractedData.tasks()) {
-                        TaskLog taskLog = new TaskLog();
-                        taskLog.setTitle(aiTask.title());
-                        taskLog.setDescription(aiTask.description());
-                        taskLog.setImpactScore(aiTask.impactScore());
-                        taskLog.setImpactJustification(aiTask.impactJustification());
-
-                        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
-                        if (aiTask.tags() != null) {
-                            for (String tagName : aiTask.tags()) {
-                                taskTags.add(getOrCreateTag(tagName));
-                            }
-                        }
-                        taskLog.setTags(taskTags);
-                        updatedEntry.addTask(taskLog);
-                        taskLogRepository.save(taskLog);
-                    }
-                    updatedEntry.setAiProcessed(true);
-                    dailyEntryRepository.save(updatedEntry);
-                });
-            }
-        } catch (Exception e) {
-            log.error("Falha ao reprocessar texto com a IA no Update: {}", e.getMessage());
-        }
-
-        return convertToDTO(updatedEntry);
+        DailyEntry updated = dailyEntryRepository.save(entry);
+        populateEntryWithAiTasks(updated, newText);
+        return convertToDTO(updated);
     }
 
-    public TaskLogDTO updateTask(UUID taskId, TaskLogUpdateRequest request, AppUser currentUser) {
-        log.info("O utilizador {} está a tentar editar a tarefa {}", currentUser.getEmail(), taskId);
+    /**
+     * Reprocessa a entrada existente com IA sem alterar o texto original.
+     * Ãštil quando o modelo melhora ou o utilizador quer re-analisar.
+     */
+    public DailyEntryDTO reprocessEntry(UUID id, AppUser currentUser) {
+        log.info("A reprocessar entrada {} do utilizador {}", id, currentUser.getEmail());
 
-        TaskLog task = taskLogRepository.findById(taskId)
-                .orElseThrow(() -> new NoSuchElementException("Tarefa não encontrada."));
+        DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
+                .orElseThrow(() -> new NoSuchElementException("DiÃ¡rio nÃ£o encontrado ou sem permissÃ£o."));
 
-        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
-            throw new NoSuchElementException("Tarefa não encontrada.");
-        }
+        taskLogRepository.deleteAll(entry.getTasks());
+        entry.getTasks().clear();
+        entry.setAiProcessed(false);
+        dailyEntryRepository.save(entry);
 
-        task.setTitle(request.title());
-        task.setDescription(request.description());
-        task.setImpactScore(request.impactScore());
-        task.setImpactJustification(request.impactJustification());
-
-        Set<Tag> updatedTags = new HashSet<>(); // Changed to Set
-        if (request.tags() != null) {
-            for (String tagName : request.tags()) {
-                updatedTags.add(getOrCreateTag(tagName));
-            }
-        }
-        task.setTags(updatedTags);
-
-        taskLogRepository.save(task);
-        return convertTaskToDTO(task);
-    }
-
-    public TaskLogDTO addTaskManually(UUID entryId, TaskLogUpdateRequest request, AppUser currentUser) {
-        DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(entryId, currentUser)
-                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou sem permissão."));
-
-        TaskLog taskLog = new TaskLog();
-        taskLog.setTitle(request.title());
-        taskLog.setDescription(request.description());
-        taskLog.setImpactScore(request.impactScore());
-        taskLog.setImpactJustification(request.impactJustification());
-
-        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
-        if (request.tags() != null) {
-            for (String tagName : request.tags()) {
-                taskTags.add(getOrCreateTag(tagName));
-            }
-        }
-        taskLog.setTags(taskTags);
-
-        entry.addTask(taskLog);
-        taskLogRepository.save(taskLog);
-
-        return convertTaskToDTO(taskLog);
-    }
-
-    public void deleteTask(UUID taskId, AppUser currentUser) {
-        TaskLog task = taskLogRepository.findById(taskId)
-                .orElseThrow(() -> new NoSuchElementException("Tarefa não encontrada."));
-
-        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
-            throw new NoSuchElementException("Tarefa não encontrada.");
-        }
-
-        taskLogRepository.delete(task);
-    }
-
-    public PerformanceReviewResponse generatePerformanceReview(AppUser currentUser, LocalDate startDate, LocalDate endDate) {
-        List<DailyEntry> entries = dailyEntryRepository
-                .findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(currentUser, startDate, endDate);
-
-        if (entries.isEmpty()) {
-            return new PerformanceReviewResponse("Não existem registos suficientes neste período para gerar um relatório.");
-        }
-
-        StringBuilder workData = new StringBuilder();
-        entries.forEach(entry -> {
-            entry.getTasks().forEach(task -> {
-                workData.append(String.format("- [%s] %s (Impacto: %d/5) - Justificação: %s\n",
-                        entry.getEntryDate().toString(),
-                        task.getTitle(),
-                        task.getImpactScore(),
-                        task.getImpactJustification()
-                ));
-            });
-        });
-
-        String systemPrompt = """
-            Atuas como um conselheiro de carreira executivo e especialista em recursos humanos.
-            O teu cliente quer pedir um aumento salarial e forneceu-te o registo das suas tarefas e impacto nos últimos meses.
-            
-            Com base na lista de tarefas abaixo, escreve um relatório de avaliação de desempenho persuasivo, altamente profissional e bem estruturado.
-            
-            O documento deve conter:
-            1. **Resumo Executivo**: Um parágrafo de impacto sobre o valor trazido à empresa.
-            2. **Principais Entregas e Impacto**: Agrupa as tarefas por temas (ex: Resolução de Problemas, Entrega de Produto, Liderança) e destaca as que têm Score de Impacto 4 ou 5.
-            3. **Consistência e Fiabilidade**: Menciona a cadência de entregas.
-            4. **Proposta de Valor Final**: Um argumento de fecho sólido justificando a progressão salarial ou de carreira.
-            
-            Usa formatação Markdown (headings, bullets, bold). Evita linguagem arrogante, mas sê extremamente confiante e orientado a dados.
-            
-            DADOS DE TRABALHO DO COLABORADOR:
-            %s
-            """;
-
-        String finalPrompt = String.format(systemPrompt, workData.toString());
-
-        String aiReport = chatClient.prompt()
-                .user(finalPrompt)
-                .call()
-                .content();
-
-        return new PerformanceReviewResponse(aiReport);
-    }
-
-    private AiExtractedDailyLog extractTasksWithAI(String text) {
-        var converter = new BeanOutputConverter<>(AiExtractedDailyLog.class);
-        String formatInstructions = converter.getFormat();
-
-        String prompt = """
-            És um assistente de gestão de carreira e avaliação de desempenho.
-            O utilizador escreveu o seguinte diário de trabalho:
-            
-            "%s"
-            
-            Analisa o texto e extrai as tarefas realizadas. Para cada tarefa:
-            1. Cria um título curto.
-            2. Melhora a descrição com um tom profissional.
-            3. Avalia o impacto no negócio de 1 a 5.
-            4. Escreve uma justificação de uma linha para essa nota de impacto.
-            5. Cria até 3 tags relevantes (ex: #BugFix, #Liderança).
-            
-            %s
-            """;
-
-        String finalPrompt = String.format(prompt, text, formatInstructions);
-
-        String response = chatClient.prompt()
-                .user(finalPrompt)
-                .call()
-                .content();
-
-        return converter.convert(response);
-    }
-
-    private DailyEntryDTO convertToDTO(DailyEntry entry) {
-        List<TaskLogDTO> taskDTOs = entry.getTasks().stream()
-                .map(this::convertTaskToDTO).toList();
-
-        return new DailyEntryDTO(
-                entry.getId(),
-                entry.getEntryDate(),
-                entry.getRawText(),
-                entry.isAiProcessed(),
-                taskDTOs
-        );
-    }
-
-    private TaskLogDTO convertTaskToDTO(TaskLog task) {
-        return new TaskLogDTO(
-                task.getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getImpactScore(),
-                task.getImpactJustification(),
-                task.getTags().stream().map(Tag::getName).toList()
-        );
+        populateEntryWithAiTasks(entry, entry.getRawText());
+        return convertToDTO(entry);
     }
 
     public Page<DailyEntryDTO> findAllEntries(Pageable pageable, AppUser currentUser) {
@@ -305,30 +104,415 @@ public class DailyEntryService {
                 .map(this::convertToDTO);
     }
 
-    public Optional<DailyEntryDTO> findById(UUID id) {
-        return dailyEntryRepository.findById(id).map(this::convertToDTO);
+    public Optional<DailyEntryDTO> findByIdForUser(UUID id, AppUser currentUser) {
+        return dailyEntryRepository.findByIdAndAppUser(id, currentUser).map(this::convertToDTO);
     }
 
     public void deleteEntry(UUID id, AppUser currentUser) {
         DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
-                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou não tens permissão para o apagar."));
-
+                .orElseThrow(() -> new NoSuchElementException("DiÃ¡rio nÃ£o encontrado ou nÃ£o tens permissÃ£o para o apagar."));
         dailyEntryRepository.delete(entry);
     }
 
-    private Tag getOrCreateTag(String tagName) {
-        String cleanTagName = tagName.trim().replace("#", "");
+    // -------------------------------------------------------------------------
+    // CRUD de tarefas
+    // -------------------------------------------------------------------------
 
-        Optional<Tag> existingTag = tagRepository.findByNameIgnoreCase(cleanTagName);
-        if (existingTag.isPresent()) {
-            return existingTag.get();
+    public TaskLogDTO updateTask(UUID taskId, TaskLogUpdateRequest request, AppUser currentUser) {
+        log.info("O utilizador {} estÃ¡ a tentar editar a tarefa {}", currentUser.getEmail(), taskId);
+
+        TaskLog task = taskLogRepository.findById(taskId)
+                .orElseThrow(() -> new NoSuchElementException("Tarefa nÃ£o encontrada."));
+
+        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
+            throw new NoSuchElementException("Tarefa nÃ£o encontrada.");
         }
 
+        task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setImpactScore(request.impactScore());
+        task.setImpactJustification(request.impactJustification());
+
+        Set<Tag> updatedTags = new HashSet<>();
+        if (request.tags() != null) {
+            for (String tagName : request.tags()) {
+                updatedTags.add(getOrCreateTag(tagName));
+            }
+        }
+        task.setTags(updatedTags);
+        taskLogRepository.save(task);
+        return convertTaskToDTO(task);
+    }
+
+    public TaskLogDTO addTaskManually(UUID entryId, TaskLogUpdateRequest request, AppUser currentUser) {
+        DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(entryId, currentUser)
+                .orElseThrow(() -> new NoSuchElementException("DiÃ¡rio nÃ£o encontrado ou sem permissÃ£o."));
+
+        TaskLog taskLog = buildTaskLog(request.title(), request.description(),
+                request.impactScore(), request.impactJustification(), request.tags());
+        entry.addTask(taskLog);
+        taskLogRepository.save(taskLog);
+        return convertTaskToDTO(taskLog);
+    }
+
+    public void deleteTask(UUID taskId, AppUser currentUser) {
+        TaskLog task = taskLogRepository.findById(taskId)
+                .orElseThrow(() -> new NoSuchElementException("Tarefa nÃ£o encontrada."));
+
+        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
+            throw new NoSuchElementException("Tarefa nÃ£o encontrada.");
+        }
+        taskLogRepository.delete(task);
+    }
+
+    // -------------------------------------------------------------------------
+    // Batch: obter mÃºltiplos dias numa sÃ³ chamada
+    // -------------------------------------------------------------------------
+
+    public List<BatchEntryDTO> getBatchEntries(List<LocalDate> dates, AppUser currentUser) {
+        List<DailyEntry> found = dailyEntryRepository.findByAppUserAndEntryDateIn(currentUser, dates);
+        // toMap with merge function handles duplicate entries per date (last wins)
+        Map<LocalDate, DailyEntryDTO> byDate = found.stream()
+                .collect(Collectors.toMap(
+                        DailyEntry::getEntryDate,
+                        this::convertToDTO,
+                        (existing, replacement) -> replacement
+                ));
+        return dates.stream()
+                .map(date -> new BatchEntryDTO(date, byDate.get(date)))
+                .collect(Collectors.toList());
+    }
+
+    // -------------------------------------------------------------------------
+    // EstatÃ­sticas calculadas no servidor
+    // -------------------------------------------------------------------------
+
+    public JournalStatsDTO getJournalStats(AppUser currentUser) {
+        List<LocalDate> dates = dailyEntryRepository.findAllEntryDatesByUser(currentUser);
+        int currentStreak = calculateCurrentStreak(dates);
+        int longestStreak = calculateLongestStreak(dates);
+        long totalEntries = dates.size();
+        long totalTasks = taskLogRepository.countByUser(currentUser);
+        double avgScore = taskLogRepository.avgImpactScoreByUser(currentUser);
+        long highImpact = taskLogRepository.countHighImpactByUser(currentUser);
+        return new JournalStatsDTO(currentStreak, longestStreak,
+                Math.round(avgScore * 100.0) / 100.0, highImpact, totalEntries, totalTasks);
+    }
+
+    // -------------------------------------------------------------------------
+    // Tags com contagem
+    // -------------------------------------------------------------------------
+
+    public List<TagWithCountDTO> getTagsWithCount(AppUser currentUser) {
+        return taskLogRepository.findTagsWithCountByUser(currentUser).stream()
+                .map(row -> new TagWithCountDTO((String) row[0], (Long) row[1]))
+                .collect(Collectors.toList());
+    }
+
+    // -------------------------------------------------------------------------
+    // RelatÃ³rio IA: por perÃ­odo prÃ©-definido
+    // -------------------------------------------------------------------------
+
+    public PerformanceReviewResponse generateReviewByPeriod(AppUser currentUser, ReviewPeriodRequest.ReviewPeriod period) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = switch (period) {
+            case WEEK -> endDate.minusDays(7);
+            case MONTH -> endDate.minusDays(30);
+            case QUARTER -> endDate.minusDays(90);
+        };
+        return generatePerformanceReview(currentUser, startDate, endDate);
+    }
+
+    public PerformanceReviewResponse generatePerformanceReview(AppUser currentUser, LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("A data de início não pode ser posterior à data de fim.");
+        }
+        List<DailyEntry> entries = dailyEntryRepository
+                .findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(currentUser, startDate, endDate);
+
+        if (entries.isEmpty()) {
+            return new PerformanceReviewResponse("NÃ£o existem registos suficientes neste perÃ­odo para gerar um relatÃ³rio.");
+        }
+
+        StringBuilder workData = new StringBuilder();
+        entries.forEach(entry -> entry.getTasks().forEach(task -> workData.append(
+                String.format("- [%s] %s (Impacto: %d/5) - JustificaÃ§Ã£o: %s\n",
+                        entry.getEntryDate(), task.getTitle(), task.getImpactScore(), task.getImpactJustification())
+        )));
+
+        String prompt = """
+                Atuas como um conselheiro de carreira executivo e especialista em recursos humanos.
+                O teu cliente quer pedir um aumento salarial e forneceu-te o registo das suas tarefas e impacto nos Ãºltimos meses.
+                
+                Com base na lista de tarefas abaixo, escreve um relatÃ³rio de avaliaÃ§Ã£o de desempenho persuasivo, altamente profissional e bem estruturado.
+                
+                O documento deve conter:
+                1. **Resumo Executivo**: Um parÃ¡grafo de impacto sobre o valor trazido Ã  empresa.
+                2. **Principais Entregas e Impacto**: Agrupa as tarefas por temas e destaca as que tÃªm Score de Impacto 4 ou 5.
+                3. **ConsistÃªncia e Fiabilidade**: Menciona a cadÃªncia de entregas.
+                4. **Proposta de Valor Final**: Um argumento de fecho sÃ³lido justificando a progressÃ£o salarial ou de carreira.
+                
+                Usa formataÃ§Ã£o Markdown. Evita linguagem arrogante, mas sÃª extremamente confiante e orientado a dados.
+                
+                DADOS DE TRABALHO DO COLABORADOR:
+                %s
+                """.formatted(workData);
+
+        String aiReport = chatClient.prompt().user(prompt).call().content();
+        return new PerformanceReviewResponse(aiReport);
+    }
+
+    // -------------------------------------------------------------------------
+    // Exportar Brag Document (Markdown)
+    // -------------------------------------------------------------------------
+
+    public String generateBragDocument(AppUser currentUser, LocalDate startDate, LocalDate endDate) {
+        List<DailyEntry> entries = dailyEntryRepository
+                .findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(currentUser, startDate, endDate);
+
+        long totalTasks = entries.stream().mapToLong(e -> e.getTasks().size()).sum();
+        OptionalDouble avgScore = entries.stream()
+                .flatMap(e -> e.getTasks().stream())
+                .mapToInt(TaskLog::getImpactScore)
+                .average();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Brag Document\n\n");
+        sb.append("**Colaborador:** ").append(currentUser.getName()).append("\n");
+        sb.append("**PerÃ­odo:** ").append(startDate).append(" a ").append(endDate).append("\n\n");
+        sb.append("---\n\n");
+        sb.append("## Resumo\n\n");
+        sb.append("- Dias registados: **").append(entries.size()).append("**\n");
+        sb.append("- Tarefas totais: **").append(totalTasks).append("**\n");
+        avgScore.ifPresent(avg ->
+                sb.append("- Score mÃ©dio de impacto: **").append(String.format("%.1f", avg)).append("/5**\n"));
+        sb.append("\n---\n\n");
+
+        sb.append("## Conquistas de Alto Impacto (Score â‰¥ 4)\n\n");
+        boolean hasHighImpact = false;
+        for (DailyEntry entry : entries) {
+            for (TaskLog task : entry.getTasks()) {
+                if (task.getImpactScore() >= 4) {
+                    hasHighImpact = true;
+                    sb.append("### ").append(entry.getEntryDate()).append(" â€” ").append(task.getTitle()).append("\n");
+                    sb.append("> Score: **").append(task.getImpactScore()).append("/5** â€” ")
+                            .append(task.getImpactJustification()).append("\n\n");
+                    if (task.getDescription() != null) {
+                        sb.append(task.getDescription()).append("\n\n");
+                    }
+                }
+            }
+        }
+        if (!hasHighImpact) sb.append("_Nenhuma tarefa de alto impacto neste perÃ­odo._\n\n");
+
+        sb.append("---\n\n");
+        sb.append("## Todas as ContribuiÃ§Ãµes\n\n");
+        entries.forEach(entry -> {
+            if (!entry.getTasks().isEmpty()) {
+                sb.append("### ").append(entry.getEntryDate()).append("\n\n");
+                entry.getTasks().forEach(task -> {
+                    sb.append("- **").append(task.getTitle())
+                            .append("** _(Score: ").append(task.getImpactScore()).append("/5)_\n");
+                    if (task.getDescription() != null) {
+                        sb.append("  ").append(task.getDescription()).append("\n");
+                    }
+                });
+                sb.append("\n");
+            }
+        });
+
+        return sb.toString();
+    }
+
+    // -------------------------------------------------------------------------
+    // Progresso face ao objetivo
+    // -------------------------------------------------------------------------
+
+    public GoalProgressDTO calculateGoalProgress(AppUser currentUser) {
+        if (currentUser.getGoal() == null || currentUser.getGoalSetAt() == null) {
+            return new GoalProgressDTO(null, null, 0, 0, 0, "N/A", List.of());
+        }
+
+        LocalDate goalStart = currentUser.getGoalSetAt();
+        LocalDate today = LocalDate.now();
+
+        List<DailyEntry> entries = dailyEntryRepository
+                .findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(currentUser, goalStart, today);
+
+        int daysTracked = entries.size();
+        double avgScore = entries.stream()
+                .flatMap(e -> e.getTasks().stream())
+                .mapToInt(TaskLog::getImpactScore)
+                .average()
+                .orElse(0.0);
+
+        double progressPct = Math.min((avgScore / 5.0) * 100, 100);
+        List<WeeklyProgressDTO> weeklyBreakdown = calculateWeeklyBreakdown(entries, today);
+        String trend = calculateTrend(weeklyBreakdown);
+
+        return new GoalProgressDTO(
+                currentUser.getGoal(),
+                goalStart,
+                Math.round(progressPct * 10.0) / 10.0,
+                Math.round(avgScore * 100.0) / 100.0,
+                daysTracked,
+                trend,
+                weeklyBreakdown
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers privados
+    // -------------------------------------------------------------------------
+
+    private void populateEntryWithAiTasks(DailyEntry entry, String text) {
         try {
-            Tag newTag = Tag.builder().name(cleanTagName).build();
-            return tagRepository.saveAndFlush(newTag);
+            log.info("A contactar IA para extrair tarefas...");
+            AiExtractedDailyLog extractedData = extractTasksWithAI(text);
+            if (extractedData != null && extractedData.tasks() != null) {
+                transactionTemplate.executeWithoutResult(status -> {
+                    for (AiTask aiTask : extractedData.tasks()) {
+                        TaskLog taskLog = buildTaskLog(aiTask.title(), aiTask.description(),
+                                aiTask.impactScore(), aiTask.impactJustification(), aiTask.tags());
+                        entry.addTask(taskLog);
+                        taskLogRepository.save(taskLog);
+                    }
+                    entry.setAiProcessed(true);
+                    dailyEntryRepository.save(entry);
+                });
+            }
+        } catch (Exception e) {
+            log.error("Falha ao processar texto com a IA: {}", e.getMessage(), e);
+        }
+    }
+
+    private TaskLog buildTaskLog(String title, String description, int impactScore,
+                                 String impactJustification, List<String> tagNames) {
+        TaskLog taskLog = new TaskLog();
+        taskLog.setTitle(title);
+        taskLog.setDescription(description);
+        taskLog.setImpactScore(impactScore);
+        taskLog.setImpactJustification(impactJustification);
+        Set<Tag> tags = new HashSet<>();
+        if (tagNames != null) {
+            tagNames.forEach(name -> {
+                Tag t = getOrCreateTag(name);
+                if (t != null) tags.add(t);
+            });
+        }
+        taskLog.setTags(tags);
+        return taskLog;
+    }
+
+    private AiExtractedDailyLog extractTasksWithAI(String text) {
+        var converter = new BeanOutputConverter<>(AiExtractedDailyLog.class);
+        String formatInstructions = converter.getFormat();
+
+        String prompt = """
+                Ã‰s um assistente de gestÃ£o de carreira e avaliaÃ§Ã£o de desempenho.
+                O utilizador escreveu o seguinte diÃ¡rio de trabalho:
+                
+                "%s"
+                
+                Analisa o texto e extrai as tarefas realizadas. Para cada tarefa:
+                1. Cria um tÃ­tulo curto.
+                2. Melhora a descriÃ§Ã£o com um tom profissional.
+                3. Avalia o impacto no negÃ³cio de 1 a 5.
+                4. Escreve uma justificaÃ§Ã£o de uma linha para essa nota de impacto.
+                5. Cria atÃ© 3 tags relevantes (ex: BugFix, LideranÃ§a).
+                
+                %s
+                """.formatted(text, formatInstructions);
+
+        String response = chatClient.prompt().user(prompt).call().content();
+        return converter.convert(response);
+    }
+
+    private int calculateCurrentStreak(List<LocalDate> datesDesc) {
+        if (datesDesc.isEmpty()) return 0;
+        LocalDate today = LocalDate.now();
+        LocalDate first = datesDesc.get(0);
+        // Streak breaks if there's no entry today or yesterday
+        if (!first.equals(today) && !first.equals(today.minusDays(1))) return 0;
+        int streak = 0;
+        LocalDate expected = first;
+        for (LocalDate date : datesDesc) {
+            if (date.equals(expected)) {
+                streak++;
+                expected = expected.minusDays(1);
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
+    private int calculateLongestStreak(List<LocalDate> datesDesc) {
+        if (datesDesc.isEmpty()) return 0;
+        List<LocalDate> sorted = new ArrayList<>(datesDesc);
+        Collections.sort(sorted); // ASC
+        int longest = 1, current = 1;
+        for (int i = 1; i < sorted.size(); i++) {
+            if (sorted.get(i).equals(sorted.get(i - 1).plusDays(1))) {
+                current++;
+                longest = Math.max(longest, current);
+            } else if (!sorted.get(i).equals(sorted.get(i - 1))) {
+                current = 1;
+            }
+        }
+        return longest;
+    }
+
+    private List<WeeklyProgressDTO> calculateWeeklyBreakdown(List<DailyEntry> allEntries, LocalDate today) {
+        List<WeeklyProgressDTO> weeks = new ArrayList<>();
+        for (int i = 11; i >= 0; i--) {
+            LocalDate weekEnd = today.minusWeeks(i);
+            LocalDate weekStart = weekEnd.minusDays(6);
+            List<TaskLog> weekTasks = allEntries.stream()
+                    .filter(e -> !e.getEntryDate().isBefore(weekStart) && !e.getEntryDate().isAfter(weekEnd))
+                    .flatMap(e -> e.getTasks().stream())
+                    .collect(Collectors.toList());
+            double weekAvg = weekTasks.stream().mapToInt(TaskLog::getImpactScore).average().orElse(0.0);
+            weeks.add(new WeeklyProgressDTO(weekStart, Math.round(weekAvg * 100.0) / 100.0, weekTasks.size()));
+        }
+        return weeks;
+    }
+
+    private String calculateTrend(List<WeeklyProgressDTO> weeks) {
+        if (weeks.size() < 4) return "STABLE";
+        int size = weeks.size();
+        double recent = weeks.subList(size - 2, size).stream()
+                .mapToDouble(WeeklyProgressDTO::averageScore).average().orElse(0);
+        double previous = weeks.subList(size - 4, size - 2).stream()
+                .mapToDouble(WeeklyProgressDTO::averageScore).average().orElse(0);
+        if (recent > previous + 0.3) return "IMPROVING";
+        if (recent < previous - 0.3) return "DECLINING";
+        return "STABLE";
+    }
+
+    private DailyEntryDTO convertToDTO(DailyEntry entry) {
+        List<TaskLogDTO> taskDTOs = entry.getTasks().stream()
+                .map(this::convertTaskToDTO).toList();
+        return new DailyEntryDTO(entry.getId(), entry.getEntryDate(), entry.getRawText(),
+                entry.isAiProcessed(), taskDTOs);
+    }
+
+    private TaskLogDTO convertTaskToDTO(TaskLog task) {
+        return new TaskLogDTO(task.getId(), task.getTitle(), task.getDescription(),
+                task.getImpactScore(), task.getImpactJustification(),
+                task.getTags().stream().map(Tag::getName).toList());
+    }
+
+    private Tag getOrCreateTag(String tagName) {
+        // Normalize: strip #, trim whitespace, lowercase for consistent storage
+        String cleanName = tagName.trim().replace("#", "").toLowerCase();
+        if (cleanName.isBlank()) return null;
+        Optional<Tag> existing = tagRepository.findByNameIgnoreCase(cleanName);
+        if (existing.isPresent()) return existing.get();
+        try {
+            return tagRepository.saveAndFlush(Tag.builder().name(cleanName).build());
         } catch (DataIntegrityViolationException e) {
-            return tagRepository.findByNameIgnoreCase(cleanTagName)
+            return tagRepository.findByNameIgnoreCase(cleanName)
                     .orElseThrow(() -> new IllegalStateException("Erro inesperado com a tag."));
         }
     }

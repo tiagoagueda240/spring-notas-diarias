@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -14,30 +16,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-/**
- * Repositório de acesso a dados para DailyEntry.
- *
- * Centraliza queries específicas do diário, com foco em segurança por utilizador
- * e otimização de leitura via EntityGraph.
- */
 public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
-    // Só por fazeres "extends JpaRepository", já ganhaste métodos grátis como:
-    // save(), findAll(), findById(), deleteById()
 
-
-    /**
-     * @EntityGraph é uma técnica avançada fantástica.
-     * Como a relação "tasks" é FetchType.LAZY, o Spring normalmente faria 1 query
-     * para trazer o diário, e depois N queries separadas para trazer as tarefas de cada diário.
-     * Ao usar attributePaths = {"tasks", "tasks.tags"}, forçamos o Hibernate a fazer um
-     * SQL LEFT JOIN, trazendo tudo numa única viagem à Base de Dados.
-     */
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Page<DailyEntry> findByAppUserOrderByEntryDateDesc(AppUser appUser, Pageable pageable);
 
-    /**
-     * Procura diário por id validando também o dono (AppUser).
-     */
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Optional<DailyEntry> findByIdAndAppUser(UUID id, AppUser appUser);
 
@@ -46,4 +29,15 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
 
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Optional<DailyEntry> findById(UUID id);
+
+    /** Devolve as datas DISTINTAS de todas as entradas do utilizador ordenadas DESC — usado para calcular streak. */
+    @Query("SELECT DISTINCT e.entryDate FROM DailyEntry e WHERE e.appUser = :user ORDER BY e.entryDate DESC")
+    List<LocalDate> findAllEntryDatesByUser(@Param("user") AppUser user);
+
+    /** Conta o total de entradas do utilizador. */
+    long countByAppUser(AppUser appUser);
+
+    /** Devolve entradas para uma lista específica de datas — usado pelo endpoint batch. */
+    @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
+    List<DailyEntry> findByAppUserAndEntryDateIn(AppUser appUser, List<LocalDate> dates);
 }

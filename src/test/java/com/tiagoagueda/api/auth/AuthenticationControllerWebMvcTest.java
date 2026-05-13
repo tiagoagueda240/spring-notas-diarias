@@ -36,13 +36,15 @@ class AuthenticationControllerWebMvcTest {
     void register_WhenPayloadIsValid_Returns200AndToken() throws Exception {
         RegisterRequest request = new RegisterRequest("Nome", "nome@email.com", "123456");
         when(authenticationService.register(any(RegisterRequest.class)))
-                .thenReturn(new AuthenticationResponse("jwt-token-123"));
+                .thenReturn(new AuthenticationResponse("jwt-token-123", "refresh-uuid-456"));
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("jwt-token-123"));
+                .andExpect(jsonPath("$.accessToken").value("jwt-token-123"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-uuid-456"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"));
 
         verify(authenticationService).register(any(RegisterRequest.class));
     }

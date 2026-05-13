@@ -14,8 +14,10 @@ spring:
 
   jpa:
     hibernate:
+      # ATENÇÃO: usar 'validate' em produção — 'update' é aceitável apenas em dev local
       ddl-auto: update
-    show-sql: true
+    # Desativar em produção (variável de ambiente: SPRING_JPA_SHOW_SQL=false)
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     open-in-view: false
     properties:
       hibernate:
@@ -47,12 +49,19 @@ application:
   security:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
+      access-token-expiration: 900000 # 15 minutos em ms
+      refresh-token-expiration-days: 7 # 7 dias para o refresh token opaco
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:4200}
+  rate-limit:
+    ai-requests-per-hour: 10
 
 logging:
   level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-    com.tiagoagueda.api: INFO # Substitui pelo package real do teu projeto, se for diferente
+    # Desativar DEBUG de SQL em produção (variável de ambiente: LOGGING_LEVEL_ORG_HIBERNATE_SQL=INFO)
+    org.hibernate.SQL: ${LOGGING_LEVEL_SQL:INFO}
+    org.hibernate.orm.jdbc.bind: ${LOGGING_LEVEL_SQL_BIND:WARN}
+    com.tiagoagueda.api: INFO
 
 # Configuração de CORS (Cross-Origin Resource Sharing)
 cors:

@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
@@ -53,7 +55,6 @@ public class GlobalExceptionHandler {
     // 4. Captura erros inesperados de código (Devolve 500 Internal Server Error)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
-        // Aqui usamos log.error e passamos o 'ex' no fim para imprimir a StackTrace no servidor
         log.error("Erro inesperado e grave no servidor: ", ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno. A nossa equipa já foi notificada.");
     }
@@ -62,11 +63,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex) {
         log.warn("Tentativa de registo falhada: {}", ex.getMessage());
-        // O código HTTP 409 (Conflict) é o ideal para dados duplicados
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // Método auxiliar para não repetirmos código
+    // 6. Token inválido/expirado — refresh token, reset de password (Devolve 401 Unauthorized)
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidToken(InvalidTokenException ex) {
+        log.warn("Token inválido ou expirado: {}", ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    // 7. JSON inválido / body malformado (Devolve 400 Bad Request)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        log.warn("Pedido com body inválido ou JSON malformado: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "O corpo do pedido está malformado ou contém valores inválidos.");
+    }
+
+    // 8. Parâmetro de URL/query com tipo errado, ex: UUID inválido (Devolve 400 Bad Request)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Tipo de argumento inválido no parâmetro '{}': {}", ex.getName(), ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST,
+                "Valor inválido para o parâmetro '" + ex.getName() + "'.");
+    }
+
+    // 9. Validação de datas / argumentos de negócio (Devolve 400 Bad Request)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("Argumento inválido: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message) {
         ErrorResponse error = new ErrorResponse(status.value(), message, LocalDateTime.now());
         return new ResponseEntity<>(error, status);
