@@ -155,19 +155,6 @@ public class DailyEntryController {
         return ResponseEntity.noContent().build();
     }
 
-    // -------------------------------------------------------------------------    // Calendar Heatmap
-    // -------------------------------------------------------------------------
-
-    @GetMapping("/calendar")
-    @Operation(summary = "Heatmap de calendário",
-            description = "Devolve um registo por dia com score médio, número de entradas e humor. Ideal para visualização estilo GitHub.")
-    public ResponseEntity<List<CalendarDayDTO>> getCalendar(
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") int year,
-            @AuthenticationPrincipal AppUser currentUser
-    ) {
-        return ResponseEntity.ok(service.getCalendarHeatmap(currentUser, year));
-    }
-
     // -------------------------------------------------------------------------    // Batch: mÃºltiplos dias numa chamada
     // -------------------------------------------------------------------------
 
