@@ -1,5 +1,6 @@
 package com.tiagoagueda.api.journal;
 
+import com.tiagoagueda.api.core.exception.DuplicateEntryException;
 import com.tiagoagueda.api.journal.dto.*;
 import com.tiagoagueda.api.user.AppUser;
 import com.tiagoagueda.api.journal.entity.DailyEntry;
@@ -56,15 +57,21 @@ public class DailyEntryService {
     public DailyEntryDTO saveEntry(String rawText, Integer mood, AppUser currentUser) {
         log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
 
+        LocalDate today = LocalDate.now();
+        if (dailyEntryRepository.findByAppUserAndEntryDate(currentUser, today).isPresent()) {
+            throw new DuplicateEntryException(
+                    "Já existe uma entrada de diário para hoje (" + today + "). Usa o endpoint de edição para a atualizar.");
+        }
+
         DailyEntry newEntry = DailyEntry.builder()
-                .entryDate(LocalDate.now())
+                .entryDate(today)
                 .rawText(rawText)
                 .mood(mood)
                 .build();
         newEntry.setAppUser(currentUser);
 
         DailyEntry savedEntry = dailyEntryRepository.save(newEntry);
-        populateEntryWithAiTasks(savedEntry, rawText);
+        populateEntryWithAiTasks(savedEntry, rawText, currentUser);
         return convertToDTO(savedEntry);
     }
 
@@ -81,7 +88,7 @@ public class DailyEntryService {
         entry.getTasks().clear();
 
         DailyEntry updated = dailyEntryRepository.save(entry);
-        populateEntryWithAiTasks(updated, newText);
+        populateEntryWithAiTasks(updated, newText, currentUser);
         return convertToDTO(updated);
     }
 
@@ -100,7 +107,7 @@ public class DailyEntryService {
         entry.setAiProcessed(false);
         dailyEntryRepository.save(entry);
 
-        populateEntryWithAiTasks(entry, entry.getRawText());
+        populateEntryWithAiTasks(entry, entry.getRawText(), currentUser);
         return convertToDTO(entry);
     }
 
@@ -467,10 +474,9 @@ public class DailyEntryService {
     // Helpers privados
     // -------------------------------------------------------------------------
 
-    private void populateEntryWithAiTasks(DailyEntry entry, String text) {
+    private void populateEntryWithAiTasks(DailyEntry entry, String text, AppUser user) {
         try {
             log.info("A contactar IA para extrair tarefas...");
-            AppUser user = entry.getAppUser();
             List<DailyEntry> recentEntries = dailyEntryRepository
                     .findTop7ByAppUserAndAiProcessedTrueOrderByEntryDateDesc(user);
             AiExtractedDailyLog extractedData = extractTasksWithAI(text, user, recentEntries);

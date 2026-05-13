@@ -95,6 +95,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // 10. Entrada de diário duplicada no mesmo dia (Devolve 409 Conflict)
+    @ExceptionHandler(DuplicateEntryException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEntry(DuplicateEntryException ex) {
+        log.warn("Tentativa de criar entrada duplicada: {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message) {
         ErrorResponse error = new ErrorResponse(status.value(), message, LocalDateTime.now());
         return new ResponseEntity<>(error, status);

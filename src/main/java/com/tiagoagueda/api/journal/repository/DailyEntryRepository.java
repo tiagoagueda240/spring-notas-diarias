@@ -42,6 +42,9 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID>, J
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     List<DailyEntry> findByAppUserAndEntryDateIn(AppUser appUser, List<LocalDate> dates);
 
+    /** Verifica se já existe uma entrada para o utilizador nesse dia — usado para impedir duplicados. */
+    Optional<DailyEntry> findByAppUserAndEntryDate(AppUser appUser, LocalDate entryDate);
+
     /** Devolve as últimas N entradas já processadas pela IA — usado para dar contexto histórico ao prompt. */
     @EntityGraph(attributePaths = {"tasks"})
     List<DailyEntry> findTop7ByAppUserAndAiProcessedTrueOrderByEntryDateDesc(AppUser appUser);
