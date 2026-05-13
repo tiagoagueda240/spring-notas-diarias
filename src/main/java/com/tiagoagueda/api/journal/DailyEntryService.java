@@ -1,9 +1,6 @@
 package com.tiagoagueda.api.journal;
 
-import com.tiagoagueda.api.journal.dto.AiExtractedDailyLog;
-import com.tiagoagueda.api.journal.dto.AiTask; // IMPORTANTE: Importar o dto AiTask
-import com.tiagoagueda.api.journal.dto.DailyEntryDTO;
-import com.tiagoagueda.api.journal.dto.TaskLogDTO;
+import com.tiagoagueda.api.journal.dto.*;
 import com.tiagoagueda.api.user.AppUser;
 import com.tiagoagueda.api.journal.entity.DailyEntry;
 import com.tiagoagueda.api.journal.entity.Tag;
@@ -25,10 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.util.*;
 
-@Service // Diz ao Spring que esta classe contém a lógica de negócio
-/**
- * Serviço de negócio responsável por guardar entradas diárias e processá-las com IA.
- */
+@Service
 public class DailyEntryService {
 
     private final DailyEntryRepository dailyEntryRepository;
@@ -39,7 +33,6 @@ public class DailyEntryService {
 
     private static final Logger log = LoggerFactory.getLogger(DailyEntryService.class);
 
-    // Construtor com Injeção de Dependências
     public DailyEntryService(DailyEntryRepository dailyEntryRepository,
                              TaskLogRepository taskLogRepository,
                              TagRepository tagRepository,
@@ -52,35 +45,22 @@ public class DailyEntryService {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    /**
-     * Lógica Principal: Guarda o texto do utilizador e envia para a IA.
-     * NÃO usamos @Transactional aqui em cima propositadamente!
-     * Se usássemos, a ligação à Base de Dados ficaria presa à espera que a IA da Google
-     * respondesse (o que pode demorar 2 a 5 segundos). Isso destruiria a performance da API.
-     */
     public DailyEntryDTO saveEntry(String rawText, AppUser currentUser) {
         log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
 
         DailyEntry newEntry = DailyEntry.builder()
-            .entryDate(LocalDate.now())
-            .rawText(rawText)
-            .build();
+                .entryDate(LocalDate.now())
+                .rawText(rawText)
+                .build();
         newEntry.setAppUser(currentUser);
 
-        // 1. Guardamos o diário. O repository.save() abre a sua própria mini-transação rápida.
         DailyEntry savedEntry = dailyEntryRepository.save(newEntry);
 
         try {
             log.info("A contactar o Gemini (Spring AI) para extrair tarefas...");
-
-            // 2. Chamada à IA demorada (A BD está livre para outros utilizadores neste momento)
             AiExtractedDailyLog extractedData = extractTasksWithAI(rawText);
 
             if (extractedData != null && extractedData.tasks() != null) {
-                log.info("A IA extraiu {} tarefas. A guardar na base de dados...", extractedData.tasks().size());
-
-                // 3. Usamos o TransactionTemplate para abrir uma transação SÓ para o momento de gravar as tarefas.
-                // Assim garantimos que ou grava todas as tarefas da IA, ou não grava nenhuma se der erro (Rollback).
                 transactionTemplate.executeWithoutResult(status -> {
                     for (AiTask aiTask : extractedData.tasks()) {
                         TaskLog taskLog = new TaskLog();
@@ -89,27 +69,20 @@ public class DailyEntryService {
                         taskLog.setImpactScore(aiTask.impactScore());
                         taskLog.setImpactJustification(aiTask.impactJustification());
 
-                        // Busca tag existente ou cria uma nova lidando com Race Conditions
-                        List<Tag> taskTags = new ArrayList<>();
+                        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
                         if (aiTask.tags() != null) {
                             for (String tagName : aiTask.tags()) {
-                                Tag tag = getOrCreateTag(tagName);
-                                taskTags.add(tag);
+                                taskTags.add(getOrCreateTag(tagName));
                             }
                         }
                         taskLog.setTags(taskTags);
-
                         savedEntry.addTask(taskLog);
                         taskLogRepository.save(taskLog);
-
                     }
-
                     savedEntry.setAiProcessed(true);
                     dailyEntryRepository.save(savedEntry);
                 });
             }
-            log.info("✅ Diário guardado e processado pela IA com sucesso!");
-
         } catch (Exception e) {
             log.error("Falha ao processar texto com a IA (Gemini). Erro: {}", e.getMessage(), e);
         }
@@ -117,14 +90,166 @@ public class DailyEntryService {
         return convertToDTO(savedEntry);
     }
 
+    public DailyEntryDTO updateEntry(UUID id, String newText, AppUser currentUser) {
+        log.info("A atualizar entrada {} do utilizador {}", id, currentUser.getEmail());
 
+        DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
+                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou sem permissão."));
+
+        entry.setRawText(newText);
+        entry.setAiProcessed(false);
+
+        taskLogRepository.deleteAll(entry.getTasks());
+        entry.getTasks().clear();
+
+        DailyEntry updatedEntry = dailyEntryRepository.save(entry);
+
+        try {
+            AiExtractedDailyLog extractedData = extractTasksWithAI(newText);
+            if (extractedData != null && extractedData.tasks() != null) {
+                transactionTemplate.executeWithoutResult(status -> {
+                    for (AiTask aiTask : extractedData.tasks()) {
+                        TaskLog taskLog = new TaskLog();
+                        taskLog.setTitle(aiTask.title());
+                        taskLog.setDescription(aiTask.description());
+                        taskLog.setImpactScore(aiTask.impactScore());
+                        taskLog.setImpactJustification(aiTask.impactJustification());
+
+                        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
+                        if (aiTask.tags() != null) {
+                            for (String tagName : aiTask.tags()) {
+                                taskTags.add(getOrCreateTag(tagName));
+                            }
+                        }
+                        taskLog.setTags(taskTags);
+                        updatedEntry.addTask(taskLog);
+                        taskLogRepository.save(taskLog);
+                    }
+                    updatedEntry.setAiProcessed(true);
+                    dailyEntryRepository.save(updatedEntry);
+                });
+            }
+        } catch (Exception e) {
+            log.error("Falha ao reprocessar texto com a IA no Update: {}", e.getMessage());
+        }
+
+        return convertToDTO(updatedEntry);
+    }
+
+    public TaskLogDTO updateTask(UUID taskId, TaskLogUpdateRequest request, AppUser currentUser) {
+        log.info("O utilizador {} está a tentar editar a tarefa {}", currentUser.getEmail(), taskId);
+
+        TaskLog task = taskLogRepository.findById(taskId)
+                .orElseThrow(() -> new NoSuchElementException("Tarefa não encontrada."));
+
+        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
+            throw new NoSuchElementException("Tarefa não encontrada.");
+        }
+
+        task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setImpactScore(request.impactScore());
+        task.setImpactJustification(request.impactJustification());
+
+        Set<Tag> updatedTags = new HashSet<>(); // Changed to Set
+        if (request.tags() != null) {
+            for (String tagName : request.tags()) {
+                updatedTags.add(getOrCreateTag(tagName));
+            }
+        }
+        task.setTags(updatedTags);
+
+        taskLogRepository.save(task);
+        return convertTaskToDTO(task);
+    }
+
+    public TaskLogDTO addTaskManually(UUID entryId, TaskLogUpdateRequest request, AppUser currentUser) {
+        DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(entryId, currentUser)
+                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou sem permissão."));
+
+        TaskLog taskLog = new TaskLog();
+        taskLog.setTitle(request.title());
+        taskLog.setDescription(request.description());
+        taskLog.setImpactScore(request.impactScore());
+        taskLog.setImpactJustification(request.impactJustification());
+
+        Set<Tag> taskTags = new HashSet<>(); // Changed to Set
+        if (request.tags() != null) {
+            for (String tagName : request.tags()) {
+                taskTags.add(getOrCreateTag(tagName));
+            }
+        }
+        taskLog.setTags(taskTags);
+
+        entry.addTask(taskLog);
+        taskLogRepository.save(taskLog);
+
+        return convertTaskToDTO(taskLog);
+    }
+
+    public void deleteTask(UUID taskId, AppUser currentUser) {
+        TaskLog task = taskLogRepository.findById(taskId)
+                .orElseThrow(() -> new NoSuchElementException("Tarefa não encontrada."));
+
+        if (!task.getDailyEntry().getAppUser().getId().equals(currentUser.getId())) {
+            throw new NoSuchElementException("Tarefa não encontrada.");
+        }
+
+        taskLogRepository.delete(task);
+    }
+
+    public PerformanceReviewResponse generatePerformanceReview(AppUser currentUser, LocalDate startDate, LocalDate endDate) {
+        List<DailyEntry> entries = dailyEntryRepository
+                .findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(currentUser, startDate, endDate);
+
+        if (entries.isEmpty()) {
+            return new PerformanceReviewResponse("Não existem registos suficientes neste período para gerar um relatório.");
+        }
+
+        StringBuilder workData = new StringBuilder();
+        entries.forEach(entry -> {
+            entry.getTasks().forEach(task -> {
+                workData.append(String.format("- [%s] %s (Impacto: %d/5) - Justificação: %s\n",
+                        entry.getEntryDate().toString(),
+                        task.getTitle(),
+                        task.getImpactScore(),
+                        task.getImpactJustification()
+                ));
+            });
+        });
+
+        String systemPrompt = """
+            Atuas como um conselheiro de carreira executivo e especialista em recursos humanos.
+            O teu cliente quer pedir um aumento salarial e forneceu-te o registo das suas tarefas e impacto nos últimos meses.
+            
+            Com base na lista de tarefas abaixo, escreve um relatório de avaliação de desempenho persuasivo, altamente profissional e bem estruturado.
+            
+            O documento deve conter:
+            1. **Resumo Executivo**: Um parágrafo de impacto sobre o valor trazido à empresa.
+            2. **Principais Entregas e Impacto**: Agrupa as tarefas por temas (ex: Resolução de Problemas, Entrega de Produto, Liderança) e destaca as que têm Score de Impacto 4 ou 5.
+            3. **Consistência e Fiabilidade**: Menciona a cadência de entregas.
+            4. **Proposta de Valor Final**: Um argumento de fecho sólido justificando a progressão salarial ou de carreira.
+            
+            Usa formatação Markdown (headings, bullets, bold). Evita linguagem arrogante, mas sê extremamente confiante e orientado a dados.
+            
+            DADOS DE TRABALHO DO COLABORADOR:
+            %s
+            """;
+
+        String finalPrompt = String.format(systemPrompt, workData.toString());
+
+        String aiReport = chatClient.prompt()
+                .user(finalPrompt)
+                .call()
+                .content();
+
+        return new PerformanceReviewResponse(aiReport);
+    }
 
     private AiExtractedDailyLog extractTasksWithAI(String text) {
-        // Configuramos o conversor que vai gerar as instruções de formatação JSON para o Gemini
         var converter = new BeanOutputConverter<>(AiExtractedDailyLog.class);
         String formatInstructions = converter.getFormat();
 
-        // O Prompt principal para a IA
         String prompt = """
             És um assistente de gestão de carreira e avaliação de desempenho.
             O utilizador escreveu o seguinte diário de trabalho:
@@ -143,27 +268,17 @@ public class DailyEntryService {
 
         String finalPrompt = String.format(prompt, text, formatInstructions);
 
-        // Faz o pedido ao Gemini
         String response = chatClient.prompt()
                 .user(finalPrompt)
                 .call()
                 .content();
 
-        // Converte a string JSON de volta para o nosso Record Java!
         return converter.convert(response);
     }
 
-    // Método auxiliar para converter Entidade em DTO (evita loops)
     private DailyEntryDTO convertToDTO(DailyEntry entry) {
         List<TaskLogDTO> taskDTOs = entry.getTasks().stream()
-                .map(task -> new TaskLogDTO(
-                        task.getId(),
-                        task.getTitle(),
-                        task.getDescription(),
-                        task.getImpactScore(),
-                        task.getImpactJustification(),
-                        task.getTags().stream().map(tag -> tag.getName()).toList()
-                )).toList();
+                .map(this::convertTaskToDTO).toList();
 
         return new DailyEntryDTO(
                 entry.getId(),
@@ -171,6 +286,17 @@ public class DailyEntryService {
                 entry.getRawText(),
                 entry.isAiProcessed(),
                 taskDTOs
+        );
+    }
+
+    private TaskLogDTO convertTaskToDTO(TaskLog task) {
+        return new TaskLogDTO(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getImpactScore(),
+                task.getImpactJustification(),
+                task.getTags().stream().map(Tag::getName).toList()
         );
     }
 
@@ -184,38 +310,26 @@ public class DailyEntryService {
     }
 
     public void deleteEntry(UUID id, AppUser currentUser) {
-        // Tenta encontrar o diário garantindo que o dono é o currentUser
         DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
                 .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou não tens permissão para o apagar."));
 
-        // Se chegou aqui, é seguro apagar!
         dailyEntryRepository.delete(entry);
-        log.info("Diário {} apagado com sucesso pelo utilizador {}", id, currentUser.getEmail());
     }
 
     private Tag getOrCreateTag(String tagName) {
         String cleanTagName = tagName.trim().replace("#", "");
 
-        // 1. Primeira tentativa: Procurar a tag na BD
         Optional<Tag> existingTag = tagRepository.findByNameIgnoreCase(cleanTagName);
         if (existingTag.isPresent()) {
             return existingTag.get();
         }
 
-        // 2. Se não encontrou, tenta criar e gravar
         try {
             Tag newTag = Tag.builder().name(cleanTagName).build();
-            // Temos de usar saveAndFlush para forçar a query SQL a ir à BD imediatamente
-            // e disparar a exceção de integridade caso haja conflito.
             return tagRepository.saveAndFlush(newTag);
-
         } catch (DataIntegrityViolationException e) {
-            // 3. 💥 Ocorreu uma Race Condition! Outra thread gravou a tag no último milissegundo.
-            // Sem pânico. Como já lá está, voltamos a ir buscá-la.
-            log.info("Conflito evitado ao criar a tag {}. A ir buscar a tag já existente...", cleanTagName);
-
             return tagRepository.findByNameIgnoreCase(cleanTagName)
-                    .orElseThrow(() -> new IllegalStateException("Erro inesperado: A tag falhou ao gravar, mas não foi encontrada depois."));
+                    .orElseThrow(() -> new IllegalStateException("Erro inesperado com a tag."));
         }
     }
 }

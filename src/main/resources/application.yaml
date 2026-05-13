@@ -1,26 +1,25 @@
+# 1. ADICIONADO: Configuração obrigatória para o Render (Porta dinâmica)
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: bragdoc-api
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/bragdoc_db
-    username: agueda
-    password: ${DB_PASSWORD:} # Boa prática: usar variável de ambiente com fallback vazio
+    # 2. ALTERADO: Usar variáveis de ambiente para a BD, mantendo o localhost como fallback para o teu PC
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bragdoc_db}
+    username: ${DB_USERNAME:agueda}
+    password: ${DB_PASSWORD:}
 
   jpa:
     hibernate:
-      # O comando "update" é ótimo para dev, mas para prod usa-se Migration (Flyway/Liquibase)
       ddl-auto: update
     show-sql: true
-    # REMOVIDO: database-platform (O Hibernate 6 deteta o PostgreSQLDialect sozinho)
-
-    # CORREÇÃO SÉNIOR: Desativa o Open-In-View para evitar fugas de ligação à BD
     open-in-view: false
-
     properties:
       hibernate:
         format_sql: true
-        # Ajuda a debugar se houver problemas de performance
         highlight_sql: true
 
   ai:
@@ -29,11 +28,8 @@ spring:
         api-key: ${GEMINI_API_KEY}
         chat:
           options:
-            # Nota: Confirma se a versão 2.5 já está disponível no teu SDK,
-            # caso contrário usa gemini-1.5-flash
-            model: gemini-1.5-flash
+            model: gemini-2.5-flash
 
-# Configurações do Actuator (Monitorização)
 management:
   endpoints:
     web:
@@ -42,22 +38,22 @@ management:
   endpoint:
     health:
       show-details: "always"
-  # Melhora a performance do Actuator
   metrics:
     export:
       prometheus:
         enabled: true
 
-# Configurações Customizadas da Aplicação
 application:
   security:
     jwt:
-      # Certifica-te que esta chave tem pelo menos 32 caracteres (256 bits)
       secret-key: ${JWT_SECRET_KEY}
 
-# Log levels para ajudar no desenvolvimento sem poluir a consola
 logging:
   level:
     org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE # Mostra os valores reais que vão para o SQL
-    com.tiagoagueda.api: INFO
+    org.hibernate.orm.jdbc.bind: TRACE
+    com.tiagoagueda.api: INFO # Substitui pelo package real do teu projeto, se for diferente
+
+# Configuração de CORS (Cross-Origin Resource Sharing)
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}

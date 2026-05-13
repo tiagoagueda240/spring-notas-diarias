@@ -1,0 +1,8 @@
+com/tiagoagueda/api/ApplicationTests.class
+com/tiagoagueda/api/security/JwtServiceTest.class
+com/tiagoagueda/api/auth/AuthenticationServiceTest.class
+com/tiagoagueda/api/core/exception/GlobalExceptionHandlerWebMvcTest.class
+com/tiagoagueda/api/journal/repository/TagRepositoryDataJpaTest.class
+com/tiagoagueda/api/core/exception/GlobalExceptionHandlerWebMvcTest$ValidationRequest.class
+com/tiagoagueda/api/core/exception/GlobalExceptionHandlerWebMvcTest$TestController.class
+com/tiagoagueda/api/auth/AuthenticationControllerWebMvcTest.class

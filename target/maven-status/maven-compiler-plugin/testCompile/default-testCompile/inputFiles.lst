@@ -1,0 +1,6 @@
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/ApplicationTests.java
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/auth/AuthenticationControllerWebMvcTest.java
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/auth/AuthenticationServiceTest.java
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/core/exception/GlobalExceptionHandlerWebMvcTest.java
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/journal/repository/TagRepositoryDataJpaTest.java
+/Users/agueda/Documents/freelance/spring_aprender/spring-notas-diarias/src/test/java/com/tiagoagueda/api/security/JwtServiceTest.java

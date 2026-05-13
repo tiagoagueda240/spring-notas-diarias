@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "task_logs")
@@ -18,9 +16,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-/**
- * Entidade de tarefa estruturada associada a uma entrada de diário.
- */
 public class TaskLog {
 
     @Id
@@ -35,12 +30,10 @@ public class TaskLog {
     private int impactScore;
     private String impactJustification;
 
-    // Relação ManyToOne: Várias tarefas pertencem a 1 texto diário
     @ManyToOne
     @JoinColumn(name = "daily_entry_id", nullable = false)
     private DailyEntry dailyEntry;
 
-    // Relação ManyToMany: Uma tarefa pode ter várias tags, e uma tag pode estar em várias tarefas
     @ManyToMany
     @JoinTable(
             name = "task_tags",
@@ -48,5 +41,5 @@ public class TaskLog {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     @Builder.Default
-    private List<Tag> tags = new ArrayList<>();
+    private Set<Tag> tags = new HashSet<>();
 }

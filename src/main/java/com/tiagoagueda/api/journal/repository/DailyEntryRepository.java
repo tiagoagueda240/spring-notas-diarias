@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,4 +40,10 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
      */
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Optional<DailyEntry> findByIdAndAppUser(UUID id, AppUser appUser);
+
+    @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
+    List<DailyEntry> findByAppUserAndEntryDateBetweenOrderByEntryDateAsc(AppUser appUser, LocalDate startDate, LocalDate endDate);
+
+    @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
+    Optional<DailyEntry> findById(UUID id);
 }
