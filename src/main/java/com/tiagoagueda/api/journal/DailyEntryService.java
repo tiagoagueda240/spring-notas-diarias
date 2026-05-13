@@ -246,7 +246,7 @@ public class DailyEntryService {
         long totalEntries = stats.totalEntries();
         int currentStreak = stats.currentStreak();
         int longestStreak = stats.longestStreak();
-        long highImpact = stats.highImpactCount();
+        long highImpact = stats.highImpactTasksCount();
 
         List<AchievementDTO> achievements = new ArrayList<>();
 
