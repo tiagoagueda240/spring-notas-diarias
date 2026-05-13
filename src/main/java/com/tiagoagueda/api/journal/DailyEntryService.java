@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.ai.chat.client.ChatClient;
@@ -469,7 +470,10 @@ public class DailyEntryService {
     private void populateEntryWithAiTasks(DailyEntry entry, String text) {
         try {
             log.info("A contactar IA para extrair tarefas...");
-            AiExtractedDailyLog extractedData = extractTasksWithAI(text);
+            AppUser user = entry.getAppUser();
+            List<DailyEntry> recentEntries = dailyEntryRepository
+                    .findTop7ByAppUserAndAiProcessedTrueOrderByEntryDateDesc(user);
+            AiExtractedDailyLog extractedData = extractTasksWithAI(text, user, recentEntries);
             if (extractedData != null && extractedData.tasks() != null) {
                 transactionTemplate.executeWithoutResult(status -> {
                     for (AiTask aiTask : extractedData.tasks()) {
@@ -505,25 +509,61 @@ public class DailyEntryService {
         return taskLog;
     }
 
-    private AiExtractedDailyLog extractTasksWithAI(String text) {
+    private AiExtractedDailyLog extractTasksWithAI(String text, AppUser user, List<DailyEntry> recentEntries) {
         var converter = new BeanOutputConverter<>(AiExtractedDailyLog.class);
         String formatInstructions = converter.getFormat();
 
+        String profession = (user.getProfession() != null && !user.getProfession().isBlank())
+                ? user.getProfession() : "não especificada";
+        String goal = (user.getGoal() != null && !user.getGoal().isBlank())
+                ? user.getGoal() : "não definido";
+        String name = (user.getName() != null && !user.getName().isBlank())
+                ? user.getName() : "Utilizador";
+
+        StringBuilder historyBuilder = new StringBuilder();
+        if (recentEntries.isEmpty()) {
+            historyBuilder.append("(sem historial de tarefas anteriores)");
+        } else {
+            recentEntries.forEach(e -> e.getTasks().stream().limit(3).forEach(t ->
+                    historyBuilder.append("- ").append(t.getTitle())
+                            .append(" (impacto: ").append(t.getImpactScore()).append("/5)\n")
+            ));
+        }
+
         String prompt = """
-                Ã‰s um assistente de gestÃ£o de carreira e avaliaÃ§Ã£o de desempenho.
-                O utilizador escreveu o seguinte diÃ¡rio de trabalho:
-                
-                "%s"
-                
-                Analisa o texto e extrai as tarefas realizadas. Para cada tarefa:
-                1. Cria um tÃ­tulo curto.
-                2. Melhora a descriÃ§Ã£o com um tom profissional.
-                3. Avalia o impacto no negÃ³cio de 1 a 5.
-                4. Escreve uma justificaÃ§Ã£o de uma linha para essa nota de impacto.
-                5. Cria atÃ© 3 tags relevantes (ex: BugFix, LideranÃ§a).
-                
+                És um assistente especializado em gestão de carreira e avaliação de desempenho profissional.
+
+                ## Contexto do utilizador
+                - Nome: %s
+                - Profissão: %s
+                - Objetivo de carreira: %s
+
+                ## REGRA FUNDAMENTAL
+                Interpreta SEMPRE as atividades no contexto da profissão indicada acima.
+                Uma atividade que parece pessoal ou trivial PODE SER uma tarefa profissional central.
+                Exemplos:
+                - Para uma Educadora de Infância: "fazer sumo de laranja com as crianças" é uma atividade pedagógica profissional (desenvolvimento sensorial, autonomia, matemática aplicada), NÃO uma atividade doméstica pessoal.
+                - Para um Chef: "testei uma nova receita" é desenvolvimento de produto profissional.
+                - Para um Personal Trainer: "fiz caminhada com o cliente" é uma sessão de treino profissional.
+                Nunca classifiques automaticamente uma atividade como "pessoal" sem considerar o contexto profissional.
+
+                ## Historial recente de tarefas (para contexto)
                 %s
-                """.formatted(text, formatInstructions);
+
+                ## Entrada do diário de hoje
+                "%s"
+
+                Analisa o texto e extrai as tarefas realizadas. Para cada tarefa:
+                1. Cria um título curto e profissionalmente relevante para a profissão "%s".
+                2. Melhora a descrição com tom profissional, enquadrando-a no contexto da profissão.
+                3. Avalia o impacto profissional de 1 a 5 (considera o contexto da profissão e o objetivo de carreira, não apenas critérios corporativos genéricos).
+                4. Escreve uma justificação de uma linha para essa nota de impacto, referindo como a atividade contribui para o papel profissional ou o objetivo de carreira.
+                5. Cria até 3 tags relevantes para a profissão (ex: para educadores use tags como AtividadePedagógica, DesenvolvimentoInfantil, EngajamentoFamiliar).
+
+                Responde em Português de Portugal.
+
+                %s
+                """.formatted(name, profession, goal, historyBuilder, text, profession, formatInstructions);
 
         String response = chatClient.prompt().user(prompt).call().content();
         return converter.convert(response);

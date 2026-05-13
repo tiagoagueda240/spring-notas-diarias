@@ -42,6 +42,9 @@ public class AppUser implements UserDetails { // <-- IMPORTANTE
 
     private LocalDate goalSetAt;
 
+    @Column(length = 200)
+    private String profession;
+
     // --- MÉTODOS OBRIGATÓRIOS DA INTERFACE USERDETAILS ---
 
     @Override

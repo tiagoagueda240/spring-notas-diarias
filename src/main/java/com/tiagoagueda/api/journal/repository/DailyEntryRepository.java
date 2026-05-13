@@ -42,6 +42,10 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID>, J
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     List<DailyEntry> findByAppUserAndEntryDateIn(AppUser appUser, List<LocalDate> dates);
 
+    /** Devolve as últimas N entradas já processadas pela IA — usado para dar contexto histórico ao prompt. */
+    @EntityGraph(attributePaths = {"tasks"})
+    List<DailyEntry> findTop7ByAppUserAndAiProcessedTrueOrderByEntryDateDesc(AppUser appUser);
+
     /**
      * Agrega por data para o heatmap de calendário.
      * Devolve [entryDate, avgImpactScore, entryCount, firstMood] para cada dia no intervalo.

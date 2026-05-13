@@ -4,6 +4,7 @@ import com.tiagoagueda.api.journal.DailyEntryService;
 import com.tiagoagueda.api.journal.dto.GoalProgressDTO;
 import com.tiagoagueda.api.user.dto.AchievementDTO;
 import com.tiagoagueda.api.user.dto.UpdateGoalRequest;
+import com.tiagoagueda.api.user.dto.UpdateProfileRequest;
 import com.tiagoagueda.api.user.dto.UserProfileDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -46,6 +47,23 @@ public class UserController {
         return ResponseEntity.ok(toProfileDTO(saved));
     }
 
+    @PutMapping("/me/profile")
+    @Operation(summary = "Atualizar perfil",
+            description = "Atualiza o nome e/ou profissão do utilizador. A profissão é usada pela IA para contextualizar a análise das tarefas diárias.")
+    public ResponseEntity<UserProfileDTO> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal AppUser currentUser
+    ) {
+        if (request.name() != null && !request.name().isBlank()) {
+            currentUser.setName(request.name());
+        }
+        if (request.profession() != null) {
+            currentUser.setProfession(request.profession().isBlank() ? null : request.profession());
+        }
+        AppUser saved = userRepository.save(currentUser);
+        return ResponseEntity.ok(toProfileDTO(saved));
+    }
+
     @GetMapping("/me/progress")
     @Operation(summary = "Métricas de progresso",
             description = "Calcula % de progresso, tendência (IMPROVING/STABLE/DECLINING) e breakdown semanal das últimas 12 semanas face ao objetivo definido.")
@@ -62,6 +80,6 @@ public class UserController {
 
     private UserProfileDTO toProfileDTO(AppUser user) {
         return new UserProfileDTO(user.getId(), user.getName(), user.getEmail(),
-                user.getGoal(), user.getGoalSetAt());
+                user.getGoal(), user.getGoalSetAt(), user.getProfession());
     }
 }

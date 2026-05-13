@@ -11,5 +11,6 @@ public record UserProfileDTO(
         String name,
         String email,
         @Schema(description = "Objetivo de carreira definido no onboarding") String goal,
-        @Schema(description = "Data em que o objetivo foi definido") LocalDate goalSetAt
+        @Schema(description = "Data em que o objetivo foi definido") LocalDate goalSetAt,
+        @Schema(description = "Profissão do utilizador, usada para contextualizar a análise da IA") String profession
 ) {}
