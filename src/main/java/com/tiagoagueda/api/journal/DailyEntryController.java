@@ -1,4 +1,4 @@
-﻿package com.tiagoagueda.api.journal;
+package com.tiagoagueda.api.journal;
 
 import com.tiagoagueda.api.core.dto.PageResponse;
 import com.tiagoagueda.api.core.exception.ErrorResponse;

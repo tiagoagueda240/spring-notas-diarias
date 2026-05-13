@@ -1,4 +1,4 @@
-﻿package com.tiagoagueda.api.journal;
+package com.tiagoagueda.api.journal;
 
 import com.tiagoagueda.api.journal.dto.*;
 import com.tiagoagueda.api.user.AppUser;
