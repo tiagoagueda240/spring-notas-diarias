@@ -23,5 +23,8 @@ public record DailyEntryDTO(
         boolean aiProcessed,
 
         @Schema(description = "Lista de tarefas extraídas da entrada")
-        List<TaskLogDTO> tasks
+        List<TaskLogDTO> tasks,
+
+        @Schema(description = "Energia/humor do dia (1=muito mau, 5=excelente)", example = "4", nullable = true)
+        Integer mood
 ) {}

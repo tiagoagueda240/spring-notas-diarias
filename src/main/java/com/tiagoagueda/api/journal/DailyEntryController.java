@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -41,7 +42,7 @@ public class DailyEntryController {
             @Valid @RequestBody DailyEntryRequest request,
             @AuthenticationPrincipal AppUser currentUser
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.saveEntry(request.text(), currentUser));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.saveEntry(request.text(), request.mood(), currentUser));
     }
 
     @GetMapping
@@ -54,7 +55,23 @@ public class DailyEntryController {
         Page<DailyEntryDTO> springPage = service.findAllEntries(PageRequest.of(page, size), currentUser);
         return ResponseEntity.ok(PageResponse.of(springPage));
     }
-
+    @GetMapping("/search")
+    @Operation(summary = "Pesquisar e filtrar entradas",
+            description = "Filtra entradas por texto livre (q), tags, score mínimo e intervalo de datas. Todos os parâmetros são opcionais.")
+    public ResponseEntity<PageResponse<DailyEntryDTO>> searchEntries(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) Integer minScore,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal AppUser currentUser
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "entryDate"));
+        Page<DailyEntryDTO> result = service.searchEntries(currentUser, q, tags, minScore, from, to, pageable);
+        return ResponseEntity.ok(PageResponse.of(result));
+    }
     @GetMapping("/{id}")
     @Operation(summary = "Obter entrada por ID")
     public ResponseEntity<DailyEntryDTO> getEntryById(
@@ -71,7 +88,7 @@ public class DailyEntryController {
             @Valid @RequestBody DailyEntryUpdateRequest request,
             @AuthenticationPrincipal AppUser currentUser
     ) {
-        return ResponseEntity.ok(service.updateEntry(id, request.text(), currentUser));
+        return ResponseEntity.ok(service.updateEntry(id, request.text(), request.mood(), currentUser));
     }
 
     @DeleteMapping("/{id}")
@@ -138,8 +155,20 @@ public class DailyEntryController {
         return ResponseEntity.noContent().build();
     }
 
+    // -------------------------------------------------------------------------    // Calendar Heatmap
     // -------------------------------------------------------------------------
-    // Batch: mÃºltiplos dias numa chamada
+
+    @GetMapping("/calendar")
+    @Operation(summary = "Heatmap de calendário",
+            description = "Devolve um registo por dia com score médio, número de entradas e humor. Ideal para visualização estilo GitHub.")
+    public ResponseEntity<List<CalendarDayDTO>> getCalendar(
+            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") int year,
+            @AuthenticationPrincipal AppUser currentUser
+    ) {
+        return ResponseEntity.ok(service.getCalendarHeatmap(currentUser, year));
+    }
+
+    // -------------------------------------------------------------------------    // Batch: mÃºltiplos dias numa chamada
     // -------------------------------------------------------------------------
 
     @PostMapping("/batch")
@@ -161,6 +190,22 @@ public class DailyEntryController {
             description = "Devolve streak atual, streak mÃ¡ximo, score mÃ©dio e contagem de tarefas de alto impacto calculados no servidor.")
     public ResponseEntity<JournalStatsDTO> getStats(@AuthenticationPrincipal AppUser currentUser) {
         return ResponseEntity.ok(service.getJournalStats(currentUser));
+    }
+
+    // -------------------------------------------------------------------------
+    // Calendar Heatmap
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/calendar")
+    @Operation(summary = "Heatmap de calendário",
+            description = "Devolve um registo por dia com score médio, número de entradas e humor. " +
+                    "Ideal para visualização estilo GitHub. Por omissão devolve o ano atual.")
+    public ResponseEntity<List<CalendarDayDTO>> getCalendar(
+            @RequestParam(required = false) Integer year,
+            @AuthenticationPrincipal AppUser currentUser
+    ) {
+        int targetYear = (year != null) ? year : java.time.LocalDate.now().getYear();
+        return ResponseEntity.ok(service.getCalendarHeatmap(currentUser, targetYear));
     }
 
     // -------------------------------------------------------------------------

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
+public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID>, JpaSpecificationExecutor<DailyEntry> {
 
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     Page<DailyEntry> findByAppUserOrderByEntryDateDesc(AppUser appUser, Pageable pageable);
@@ -40,4 +41,27 @@ public interface DailyEntryRepository extends JpaRepository<DailyEntry, UUID> {
     /** Devolve entradas para uma lista específica de datas — usado pelo endpoint batch. */
     @EntityGraph(attributePaths = {"tasks", "tasks.tags"})
     List<DailyEntry> findByAppUserAndEntryDateIn(AppUser appUser, List<LocalDate> dates);
+
+    /**
+     * Agrega por data para o heatmap de calendário.
+     * Devolve [entryDate, avgImpactScore, entryCount, firstMood] para cada dia no intervalo.
+     */
+    @Query("""
+            SELECT e.entryDate,
+                   COALESCE(AVG(t.impactScore), 0.0),
+                   COUNT(DISTINCT e.id),
+                   MAX(e.mood)
+            FROM DailyEntry e
+            LEFT JOIN e.tasks t
+            WHERE e.appUser = :user
+              AND e.entryDate >= :start
+              AND e.entryDate <= :end
+            GROUP BY e.entryDate
+            ORDER BY e.entryDate ASC
+            """)
+    List<Object[]> findCalendarData(
+            @Param("user") AppUser user,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
 }

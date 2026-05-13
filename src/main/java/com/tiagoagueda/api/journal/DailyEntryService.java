@@ -6,8 +6,10 @@ import com.tiagoagueda.api.journal.entity.DailyEntry;
 import com.tiagoagueda.api.journal.entity.Tag;
 import com.tiagoagueda.api.journal.entity.TaskLog;
 import com.tiagoagueda.api.journal.repository.DailyEntryRepository;
+import com.tiagoagueda.api.journal.repository.DailyEntrySpecification;
 import com.tiagoagueda.api.journal.repository.TagRepository;
 import com.tiagoagueda.api.journal.repository.TaskLogRepository;
+import com.tiagoagueda.api.user.dto.AchievementDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -50,12 +52,13 @@ public class DailyEntryService {
     // CRUD de entradas
     // -------------------------------------------------------------------------
 
-    public DailyEntryDTO saveEntry(String rawText, AppUser currentUser) {
-        log.info("A criar nova entrada de diÃ¡rio para o utilizador: {}", currentUser.getEmail());
+    public DailyEntryDTO saveEntry(String rawText, Integer mood, AppUser currentUser) {
+        log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
 
         DailyEntry newEntry = DailyEntry.builder()
                 .entryDate(LocalDate.now())
                 .rawText(rawText)
+                .mood(mood)
                 .build();
         newEntry.setAppUser(currentUser);
 
@@ -64,13 +67,14 @@ public class DailyEntryService {
         return convertToDTO(savedEntry);
     }
 
-    public DailyEntryDTO updateEntry(UUID id, String newText, AppUser currentUser) {
+    public DailyEntryDTO updateEntry(UUID id, String newText, Integer mood, AppUser currentUser) {
         log.info("A atualizar entrada {} do utilizador {}", id, currentUser.getEmail());
 
         DailyEntry entry = dailyEntryRepository.findByIdAndAppUser(id, currentUser)
-                .orElseThrow(() -> new NoSuchElementException("DiÃ¡rio nÃ£o encontrado ou sem permissÃ£o."));
+                .orElseThrow(() -> new NoSuchElementException("Diário não encontrado ou sem permissão."));
 
         entry.setRawText(newText);
+        if (mood != null) entry.setMood(mood);
         entry.setAiProcessed(false);
         taskLogRepository.deleteAll(entry.getTasks());
         entry.getTasks().clear();
@@ -102,6 +106,39 @@ public class DailyEntryService {
     public Page<DailyEntryDTO> findAllEntries(Pageable pageable, AppUser currentUser) {
         return dailyEntryRepository.findByAppUserOrderByEntryDateDesc(currentUser, pageable)
                 .map(this::convertToDTO);
+    }
+
+    // -------------------------------------------------------------------------
+    // Search & Filter
+    // -------------------------------------------------------------------------
+
+    public Page<DailyEntryDTO> searchEntries(
+            AppUser currentUser,
+            String q,
+            List<String> tags,
+            Integer minScore,
+            LocalDate from,
+            LocalDate to,
+            Pageable pageable
+    ) {
+        var spec = DailyEntrySpecification.buildFilter(currentUser, q, tags, minScore, from, to);
+        return dailyEntryRepository.findAll(spec, pageable).map(this::convertToDTO);
+    }
+
+    // -------------------------------------------------------------------------
+    // Calendar Heatmap
+    // -------------------------------------------------------------------------
+
+    public List<CalendarDayDTO> getCalendarHeatmap(AppUser currentUser, int year) {
+        LocalDate start = LocalDate.of(year, 1, 1);
+        LocalDate end = LocalDate.of(year, 12, 31);
+        List<Object[]> rows = dailyEntryRepository.findCalendarData(currentUser, start, end);
+        return rows.stream().map(row -> new CalendarDayDTO(
+                (LocalDate) row[0],
+                row[1] instanceof Number n ? Math.round(n.doubleValue() * 100.0) / 100.0 : 0.0,
+                row[2] instanceof Number n ? n.intValue() : 0,
+                row[3] instanceof Number n ? n.intValue() : null
+        )).toList();
     }
 
     public Optional<DailyEntryDTO> findByIdForUser(UUID id, AppUser currentUser) {
@@ -197,6 +234,70 @@ public class DailyEntryService {
         long highImpact = taskLogRepository.countHighImpactByUser(currentUser);
         return new JournalStatsDTO(currentStreak, longestStreak,
                 Math.round(avgScore * 100.0) / 100.0, highImpact, totalEntries, totalTasks);
+    }
+
+    // -------------------------------------------------------------------------
+    // Achievements / Badges
+    // -------------------------------------------------------------------------
+
+    public List<AchievementDTO> getAchievements(AppUser currentUser) {
+        JournalStatsDTO stats = getJournalStats(currentUser);
+        long totalTasks = stats.totalTasks();
+        long totalEntries = stats.totalEntries();
+        int currentStreak = stats.currentStreak();
+        int longestStreak = stats.longestStreak();
+        long highImpact = stats.highImpactCount();
+
+        List<AchievementDTO> achievements = new ArrayList<>();
+
+        achievements.add(badge("FIRST_ENTRY", "Primeira Entrada",
+                "Registaste o teu primeiro dia de trabalho",
+                totalEntries >= 1, totalEntries, 1));
+
+        achievements.add(badge("STREAK_3", "Hat-trick",
+                "3 dias consecutivos de registo",
+                currentStreak >= 3, currentStreak, 3));
+
+        achievements.add(badge("STREAK_7", "Semana Perfeita",
+                "7 dias consecutivos de registo",
+                currentStreak >= 7 || longestStreak >= 7,
+                Math.max(currentStreak, longestStreak), 7));
+
+        achievements.add(badge("STREAK_30", "Mês Inabalável",
+                "30 dias consecutivos de registo",
+                longestStreak >= 30, longestStreak, 30));
+
+        achievements.add(badge("FIRST_HIGH_IMPACT", "Alto Impacto",
+                "Primeira tarefa com score 5/5",
+                highImpact >= 1, Math.min(highImpact, 1), 1));
+
+        achievements.add(badge("HIGH_IMPACT_10", "Máquina de Resultados",
+                "10 tarefas com score de impacto ≥ 4",
+                highImpact >= 10, highImpact, 10));
+
+        achievements.add(badge("TASKS_50", "50 Conquistas",
+                "Registaste 50 tarefas no total",
+                totalTasks >= 50, totalTasks, 50));
+
+        achievements.add(badge("TASKS_200", "Lenda da Produtividade",
+                "200 tarefas registadas",
+                totalTasks >= 200, totalTasks, 200));
+
+        achievements.add(badge("ENTRIES_30", "Escritor Consistente",
+                "30 dias de registo ao longo do tempo",
+                totalEntries >= 30, totalEntries, 30));
+
+        achievements.add(badge("ENTRIES_100", "Centúsimo Dia",
+                "100 dias de registo ao longo do tempo",
+                totalEntries >= 100, totalEntries, 100));
+
+        return achievements;
+    }
+
+    private AchievementDTO badge(String id, String title, String description,
+                                 boolean unlocked, long current, long target) {
+        return new AchievementDTO(id, title, description, unlocked,
+                Math.min(current, target), target);
     }
 
     // -------------------------------------------------------------------------
@@ -494,7 +595,7 @@ public class DailyEntryService {
         List<TaskLogDTO> taskDTOs = entry.getTasks().stream()
                 .map(this::convertTaskToDTO).toList();
         return new DailyEntryDTO(entry.getId(), entry.getEntryDate(), entry.getRawText(),
-                entry.isAiProcessed(), taskDTOs);
+                entry.isAiProcessed(), taskDTOs, entry.getMood());
     }
 
     private TaskLogDTO convertTaskToDTO(TaskLog task) {

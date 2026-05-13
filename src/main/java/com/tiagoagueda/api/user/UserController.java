@@ -2,6 +2,7 @@ package com.tiagoagueda.api.user;
 
 import com.tiagoagueda.api.journal.DailyEntryService;
 import com.tiagoagueda.api.journal.dto.GoalProgressDTO;
+import com.tiagoagueda.api.user.dto.AchievementDTO;
 import com.tiagoagueda.api.user.dto.UpdateGoalRequest;
 import com.tiagoagueda.api.user.dto.UserProfileDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -49,6 +51,13 @@ public class UserController {
             description = "Calcula % de progresso, tendência (IMPROVING/STABLE/DECLINING) e breakdown semanal das últimas 12 semanas face ao objetivo definido.")
     public ResponseEntity<GoalProgressDTO> getProgress(@AuthenticationPrincipal AppUser currentUser) {
         return ResponseEntity.ok(dailyEntryService.calculateGoalProgress(currentUser));
+    }
+
+    @GetMapping("/me/achievements")
+    @Operation(summary = "Conquistas / Badges",
+            description = "Devolve todas as conquistas disponíveis com estado (desbloqueado ou não) e progresso atual.")
+    public ResponseEntity<List<AchievementDTO>> getAchievements(@AuthenticationPrincipal AppUser currentUser) {
+        return ResponseEntity.ok(dailyEntryService.getAchievements(currentUser));
     }
 
     private UserProfileDTO toProfileDTO(AppUser user) {

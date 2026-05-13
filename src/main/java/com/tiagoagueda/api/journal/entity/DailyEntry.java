@@ -34,6 +34,10 @@ public class DailyEntry {
     @Builder.Default
     private boolean aiProcessed = false;
 
+    /** Energia/humor do utilizador neste dia: 1 (muito mau) a 5 (excelente). Opcional. */
+    @Column
+    private Integer mood;
+
     @OneToMany(mappedBy = "dailyEntry", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private Set<TaskLog> tasks = new HashSet<>();
