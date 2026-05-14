@@ -46,7 +46,7 @@ public class AppUser implements UserDetails { // <-- IMPORTANTE
     private LocalDate goalSetAt;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
     private Instant createdAt;
 
     @Column(length = 200)
