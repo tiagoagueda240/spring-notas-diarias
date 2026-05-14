@@ -42,7 +42,7 @@ public class DailyEntryController {
             @Valid @RequestBody DailyEntryRequest request,
             @AuthenticationPrincipal AppUser currentUser
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.saveEntry(request.text(), request.mood(), currentUser));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.saveEntry(request.text(), request.mood(), request.date(), currentUser));
     }
 
     @GetMapping

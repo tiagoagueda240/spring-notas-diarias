@@ -10,6 +10,7 @@ import com.tiagoagueda.api.core.exception.InvalidTokenException;
 import com.tiagoagueda.api.core.exception.UserAlreadyExistsException;
 import com.tiagoagueda.api.user.AppUser;
 import com.tiagoagueda.api.user.AppUserRepository;
+import com.tiagoagueda.api.user.Role;
 import com.tiagoagueda.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -59,6 +60,7 @@ public class AuthenticationService {
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
+                .role(Role.USER)
                 .build();
 
         repository.save(user);

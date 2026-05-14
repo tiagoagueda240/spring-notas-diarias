@@ -54,17 +54,17 @@ public class DailyEntryService {
     // CRUD de entradas
     // -------------------------------------------------------------------------
 
-    public DailyEntryDTO saveEntry(String rawText, Integer mood, AppUser currentUser) {
+    public DailyEntryDTO saveEntry(String rawText, Integer mood, LocalDate date, AppUser currentUser) {
         log.info("A criar nova entrada de diário para o utilizador: {}", currentUser.getEmail());
 
-        LocalDate today = LocalDate.now();
-        if (dailyEntryRepository.findByAppUserAndEntryDate(currentUser, today).isPresent()) {
+        LocalDate entryDate = (date != null) ? date : LocalDate.now();
+        if (dailyEntryRepository.findByAppUserAndEntryDate(currentUser, entryDate).isPresent()) {
             throw new DuplicateEntryException(
-                    "Já existe uma entrada de diário para hoje (" + today + "). Usa o endpoint de edição para a atualizar.");
+                    "Já existe uma entrada de diário para " + entryDate + ". Usa o endpoint de edição para a atualizar.");
         }
 
         DailyEntry newEntry = DailyEntry.builder()
-                .entryDate(today)
+                .entryDate(entryDate)
                 .rawText(rawText)
                 .mood(mood)
                 .build();

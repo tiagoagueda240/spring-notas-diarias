@@ -55,6 +55,9 @@ application:
     url: ${FRONTEND_URL:http://localhost:4200}
   rate-limit:
     ai-requests-per-hour: 10
+  admin:
+    email: ${ADMIN_EMAIL:admin@bragdoc.app}
+    password: ${ADMIN_PASSWORD}
 
 logging:
   level:

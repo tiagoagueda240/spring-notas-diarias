@@ -1,6 +1,7 @@
 package com.tiagoagueda.api.auth.repository;
 
 import com.tiagoagueda.api.auth.entity.PasswordResetToken;
+import com.tiagoagueda.api.user.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,4 +21,8 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Transactional
     @Query("UPDATE PasswordResetToken t SET t.used = true WHERE t.user.email = :email")
     void invalidateAllByUserEmail(@Param("email") String email);
+
+    @Modifying
+    @Transactional
+    void deleteAllByUser(AppUser user);
 }
