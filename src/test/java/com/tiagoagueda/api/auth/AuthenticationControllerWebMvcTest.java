@@ -36,7 +36,7 @@ class AuthenticationControllerWebMvcTest {
     void register_WhenPayloadIsValid_Returns200AndToken() throws Exception {
         RegisterRequest request = new RegisterRequest("Nome", "nome@email.com", "123456");
         when(authenticationService.register(any(RegisterRequest.class)))
-                .thenReturn(new AuthenticationResponse("jwt-token-123", "refresh-uuid-456"));
+                .thenReturn(new AuthenticationResponse("jwt-token-123", "refresh-uuid-456", "USER"));
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
