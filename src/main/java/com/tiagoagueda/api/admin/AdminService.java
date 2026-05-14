@@ -50,7 +50,7 @@ public class AdminService {
     }
 
     private AdminUserDTO toAdminDTO(AppUser user) {
-        long totalEntries = dailyEntryRepository.countByAppUser(user);
+        long entryCount = dailyEntryRepository.countByAppUser(user);
         return new AdminUserDTO(
                 user.getId(),
                 user.getName(),
@@ -58,7 +58,8 @@ public class AdminService {
                 user.getRole(),
                 user.getPlan(),
                 user.getGoalSetAt(),
-                totalEntries
+                user.getCreatedAt(),
+                entryCount
         );
     }
 }

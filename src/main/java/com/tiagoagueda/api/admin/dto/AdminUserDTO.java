@@ -4,6 +4,7 @@ import com.tiagoagueda.api.user.Plan;
 import com.tiagoagueda.api.user.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -15,5 +16,6 @@ public record AdminUserDTO(
         Role role,
         Plan plan,
         LocalDate goalSetAt,
-        long totalEntries
+        Instant createdAt,
+        long entryCount
 ) {}
