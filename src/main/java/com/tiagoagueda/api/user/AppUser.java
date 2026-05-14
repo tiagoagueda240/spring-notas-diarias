@@ -47,12 +47,12 @@ public class AppUser implements UserDetails { // <-- IMPORTANTE
     private String profession;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'USER'")
     @Builder.Default
     private Role role = Role.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'FREE'")
     @Builder.Default
     private Plan plan = Plan.FREE;
 

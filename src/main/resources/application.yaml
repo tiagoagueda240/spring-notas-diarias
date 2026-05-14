@@ -57,7 +57,7 @@ application:
     ai-requests-per-hour: 10
   admin:
     email: ${ADMIN_EMAIL:admin@bragdoc.app}
-    password: ${ADMIN_PASSWORD}
+    password: ${ADMIN_PASSWORD:changeme} # OBRIGATÓRIO definir ADMIN_PASSWORD em produção
 
 logging:
   level:
