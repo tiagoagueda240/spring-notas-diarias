@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -66,9 +67,9 @@ public class AuthenticationService {
         repository.save(user);
         log.info("Utilizador {} registado com sucesso.", request.email());
 
-        String accessToken = jwtService.generateToken(user);
+        String accessToken = jwtService.generateToken(Map.of("role", user.getRole().name()), user);
         RefreshToken refreshToken = createRefreshToken(user);
-        return new AuthenticationResponse(accessToken, refreshToken.getId().toString());
+        return new AuthenticationResponse(accessToken, refreshToken.getId().toString(), user.getRole().name());
     }
 
     @Transactional
@@ -82,9 +83,9 @@ public class AuthenticationService {
         AppUser user = repository.findByEmail(request.email()).orElseThrow();
         log.info("Autenticação bem-sucedida para: {}", request.email());
 
-        String accessToken = jwtService.generateToken(user);
+        String accessToken = jwtService.generateToken(Map.of("role", user.getRole().name()), user);
         RefreshToken refreshToken = createRefreshToken(user);
-        return new AuthenticationResponse(accessToken, refreshToken.getId().toString());
+        return new AuthenticationResponse(accessToken, refreshToken.getId().toString(), user.getRole().name());
     }
 
     /**
@@ -109,11 +110,11 @@ public class AuthenticationService {
         refreshTokenRepository.save(stored);
 
         AppUser user = stored.getUser();
-        String newAccessToken = jwtService.generateToken(user);
+        String newAccessToken = jwtService.generateToken(Map.of("role", user.getRole().name()), user);
         RefreshToken newRefreshToken = createRefreshToken(user);
 
         log.info("Tokens renovados via refresh para o utilizador: {}", user.getEmail());
-        return new AuthenticationResponse(newAccessToken, newRefreshToken.getId().toString());
+        return new AuthenticationResponse(newAccessToken, newRefreshToken.getId().toString(), user.getRole().name());
     }
 
     /**

@@ -13,9 +13,12 @@ public record AuthenticationResponse(
         String refreshToken,
 
         @Schema(description = "Tipo de token", example = "Bearer")
-        String tokenType
+        String tokenType,
+
+        @Schema(description = "Role do utilizador autenticado", example = "USER")
+        String role
 ) {
-    public AuthenticationResponse(String accessToken, String refreshToken) {
-        this(accessToken, refreshToken, "Bearer");
+    public AuthenticationResponse(String accessToken, String refreshToken, String role) {
+        this(accessToken, refreshToken, "Bearer", role);
     }
 }
