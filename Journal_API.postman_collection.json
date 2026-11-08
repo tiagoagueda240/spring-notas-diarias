@@ -1,0 +1,462 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-1234-56789abcdef1",
+		"name": "Journal API - Completa (Auth + Diário)",
+		"description": "Coleção completa com Autenticação (auto-token) e gestão de diário/avaliação com IA.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "0. Autenticação",
+			"item": [
+				{
+					"name": "0.1. Registar Utilizador",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    console.log(\"Token guardado automaticamente!\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Tiago Águeda\",\n  \"email\": \"tiago@example.com\",\n  \"password\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "0.2. Fazer Login (Authenticate)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    console.log(\"Token atualizado automaticamente!\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"tiago@example.com\",\n  \"password\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/authenticate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"authenticate"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "1. Diário (Entradas)",
+			"item": [
+				{
+					"name": "1.1. Criar Entrada (IA Processa)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Hoje estive a otimizar as queries à base de dados usando EntityGraphs no Spring Boot. Consegui reduzir o tempo de resposta do endpoint principal de 2 segundos para 150ms. Além disso, ajudei o João (júnior) a configurar o ambiente de desenvolvimento dele no Docker.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries"
+							]
+						}
+					}
+				},
+				{
+					"name": "1.2. Listar Entradas (Paginado)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries?page=0&size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "1.3. Obter Entrada por ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/{{entry_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"{{entry_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "1.4. Atualizar Entrada",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Atualizei o texto. Afinal o tempo de resposta desceu para 100ms e também resolvi um bug crítico em produção.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/{{entry_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"{{entry_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "1.5. Apagar Entrada",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/{{entry_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"{{entry_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Gestão de Tarefas (Ajuste Fino)",
+			"item": [
+				{
+					"name": "2.1. Adicionar Tarefa Manual",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Resolução de Incidente Crítico\",\n  \"description\": \"Intervenção manual na base de dados para recuperar transações perdidas de clientes.\",\n  \"impactScore\": 5,\n  \"impactJustification\": \"Evitou perda de receita direta e danos à reputação da empresa.\",\n  \"tags\": [\"Hotfix\", \"BaseDeDados\", \"CrisisManagement\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/{{entry_id}}/tasks",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"{{entry_id}}",
+								"tasks"
+							]
+						}
+					}
+				},
+				{
+					"name": "2.2. Atualizar Tarefa (Editar Score)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Mentoria a Dev Júnior\",\n  \"description\": \"Acompanhamento na configuração do ambiente Docker.\",\n  \"impactScore\": 4,\n  \"impactJustification\": \"Acelerou o onboarding do novo colaborador em 2 dias.\",\n  \"tags\": [\"Liderança\", \"Mentoria\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/tasks/{{task_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"tasks",
+								"{{task_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "2.3. Apagar Tarefa",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/tasks/{{task_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"tasks",
+								"{{task_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Relatórios IA",
+			"item": [
+				{
+					"name": "3.1. Gerar Relatório de Desempenho",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2026-12-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/daily-entries/generate-review",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"daily-entries",
+								"generate-review"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "entry_id",
+			"value": "COLA_AQUI_O_UUID_DE_UM_DIARIO",
+			"type": "string"
+		},
+		{
+			"key": "task_id",
+			"value": "COLA_AQUI_O_UUID_DE_UMA_TAREFA",
+			"type": "string"
+		}
+	]
+}
